@@ -1,6 +1,7 @@
 #include <memory>
 #include <cstdio>
 #include <fstream>
+#include <cmath>
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
@@ -35,6 +36,9 @@ const Scalar BLUE = Scalar(255, 178, 50);
 const Scalar YELLOW = Scalar(0, 255, 255);
 const Scalar RED = Scalar(0,0,255);
 
+// Constants
+// const float RAD_TO_DEGREE = 180/3.14159;
+// const float DEGREE_TO_RAD = 3.14159/180;
 
 
 class ImageProc : public rclcpp::Node {
@@ -45,9 +49,14 @@ private:
     // Constants
     const float INPUT_WIDTH = 640.0;
     const float INPUT_HEIGHT = 640.0;
-    const float SCORE_THRESHOLD = 0.25;
+    const float SCORE_THRESHOLD = 0.45;
     const float NMS_THRESHOLD = 0.45;
     const float CONFIDENCE_THRESHOLD = 0.25;
+    // const float DISTANCE_TO_GROUND = 2.5/tan(0.3); // CAMERA_Z/cos(CAMERA_PITCH)
+    // const float D = 5.28/cos(0.3); // STANDING_PERSON_X/cos(CAMERA_PITCH)
+    const float D_config = 5.28; // STANDING_PERSON_X
+    const float W_config = 8.67; // measure or calculate D*tan(CAMERA_AFOV/2)
+
 
     // Members
     // image_transport::ImageTransport it;
@@ -60,6 +69,17 @@ private:
         int col = source.cols;
         int row = source.rows;
         int _max = MAX(col, row);
+        // int xpad = 0;
+        // int ypad = 0;
+        // if (col > row) {
+        //     xpad = 0;
+        //     ypad = (col - row) / 2;
+        // }
+        // else {
+        //     xpad = (row - col) / 2;
+        //     ypad = 0;
+        // }
+
         Mat result = Mat::zeros(_max, _max, CV_8UC3);
         source.copyTo(result(Rect(0, 0, col, row)));
         return result;
@@ -109,7 +129,7 @@ private:
                 double max_class_score;
                 minMaxLoc(scores, 0, &max_class_score, 0, &class_id);
                 // Continue if the class score is above the threshold.
-                if (max_class_score > SCORE_THRESHOLD)
+                if (max_class_score > SCORE_THRESHOLD && class_id.x == 0)
                 {
                     // Store class ID and confidence in the pre-defined respective vectors.
                     confidences.push_back(confidence);
@@ -134,6 +154,11 @@ private:
             data += dimensions;
         }
 
+        // 3D
+        vector<Point3d> positions;
+        const float WIDTH_PER_PIXEL_M = W_config*2/original_image.cols;
+        const float DEPTH_PER_PIXEL_M = D_config*2/original_image.rows;
+
         // Perform Non-Maximum Suppression and draw predictions.
         vector<int> indices;
         NMSBoxes(boxes, confidences, SCORE_THRESHOLD, NMS_THRESHOLD, indices);
@@ -149,7 +174,37 @@ private:
             rectangle(image, Point(left, top), Point(left + width, top + height), BLUE, 3*THICKNESS);
             // Draw centroid.
             circle(image, centroids[idx], 2, CV_RGB(255,0,0), -1);
-            printf("(%d, %d)\n", centroids[idx].x, centroids[idx].y);
+            printf("Pixel: (%d, %d)\n", centroids[idx].x, centroids[idx].y);
+
+            // 3D
+            float cx = centroids[idx].x;
+            float cy = centroids[idx].y;
+            float factor =  cy/(original_image.rows/2);
+            float depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M;
+            if (factor > 1) {
+                depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*factor;
+            }
+            else {
+                depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*(((1 - factor)*100));
+            }
+            float px = D_config + (depth_per_pixel_m_dynamic * ((original_image.rows/2) - cy));
+
+            float width_per_pixel_m_dynamic = WIDTH_PER_PIXEL_M * px / D_config;
+            float py = width_per_pixel_m_dynamic * ((original_image.cols/2) - cx);
+            float pz = 0;
+            positions.push_back(Point3d(px, py, pz));
+            printf("3D  P: (%.3f, %.3f, %.3f)\n", px, py, pz);
+
+            // publish rmf_obstacle
+            auto message = std_msgs::msg::String();
+            for (size_t i = 0; i < positions.size(); i++) {
+                //class_list_[class_ids[idx]] = "person"
+                message.data = class_list_[class_ids[idx]] + " " + std::to_string(class_ids[idx])
+                + " " + std::to_string(positions[i].x) + " " + std::to_string(positions[i].y) + " " + std::to_string(positions[i].z);
+                RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
+                publisher_->publish(message);
+            }
+
             // Get the label for the class name and its confidence.
             string label = format("%.2f", confidences[idx]);
             label = class_list_[class_ids[idx]] + ":" + label;
@@ -165,11 +220,11 @@ private:
         string label = format("Inference time : %.2f ms", t);
         putText(image, label, Point(20, 40), FONT_FACE, FONT_SCALE, RED);
 
-        // Draw image center
-        circle(image, Point(400, 320), 2, CV_RGB(255,255,0), -1);
-
         // Slicing to crop the image
         image = image(Range(0,original_image.rows),Range(0,original_image.cols));
+
+        // Draw image center
+        circle(image, Point(original_image.cols/2, original_image.rows/2), 2, CV_RGB(255,255,0), -1);
     }
 
     void draw_label(Mat& input_image, string label, int left, int top)
@@ -195,17 +250,17 @@ private:
         cv_bridge::CvImagePtr cv_ptr;
         cv_ptr = cv_bridge::toCvCopy(msg, msg->encoding);
         Mat original_image = cv_ptr->image;
-        // Mat original_image = imread("/home/osrc/Pictures/Screenshots/empty_world/1.png");
+        // Mat original_image = imread("/home/osrc/Pictures/Screenshots/empty_world/test.png");
         Mat image = format_yolov5(original_image);
         vector<Mat> detections = detect(image);
         post_process(original_image, image, detections);
         imshow(OPENCV_WINDOW, image);
-        // imwrite("/home/osrc/Pictures/Screenshots/example_world/1.jpg", image);
-        waitKey(3);
+        // imwrite("/home/osrc/Pictures/Screenshots/empty_world/1.jpg", image);
+        waitKey(3000);
     }
 
 public:
-    ImageProc() : Node("image_converter") {
+    ImageProc() : Node("ImageProc") {
         cv::namedWindow(OPENCV_WINDOW, cv::WINDOW_AUTOSIZE);
 
         // rmw_qos_profile_t custom_qos = rmw_qos_profile_default;
