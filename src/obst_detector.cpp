@@ -41,7 +41,7 @@ const Scalar RED = Scalar(0,0,255);
 // const float DEGREE_TO_RAD = 3.14159/180;
 
 
-class ImageProc : public rclcpp::Node {
+class ObstDetector : public rclcpp::Node {
 private:
 
     const std::string OPENCV_WINDOW = "Image window";
@@ -266,14 +266,14 @@ private:
     }
 
 public:
-    ImageProc() : Node("ImageProc") {
+    ObstDetector() : Node("ObstDetector") {
         cv::namedWindow(OPENCV_WINDOW, cv::WINDOW_AUTOSIZE);
 
         // rmw_qos_profile_t custom_qos = rmw_qos_profile_default;
                 // sub_ = image_transport::create_subscription(this, "camera/image_raw",
-                // std::bind(&ImageProc::imageCallback, this, std::placeholders::_1), "raw", custom_qos);
+                // std::bind(&ObstDetector::imageCallback, this, std::placeholders::_1), "raw", custom_qos);
         subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
-                "camera/image_rect", 10, std::bind(&ImageProc::imageCallback, this, std::placeholders::_1));
+                "camera/image_rect", 10, std::bind(&ObstDetector::imageCallback, this, std::placeholders::_1));
         publisher_ = this->create_publisher<std_msgs::msg::String>("topic_out", 10);
         net_ = readNet("/home/osrc/dev_ws/src/rmf_camera/assets/yolov5s.onnx");
         ifstream ifs("/home/osrc/dev_ws/src/rmf_camera/assets/coco.names");
@@ -284,7 +284,7 @@ public:
         }
     }
 
-    ~ImageProc()
+    ~ObstDetector()
     {
         cv::destroyWindow(OPENCV_WINDOW);
     }
@@ -293,8 +293,8 @@ public:
 int main(int argc, char** argv)
 {
     rclcpp::init(argc, argv);
-    std::cout << "Starting ImageProc node" << std::endl;
-    rclcpp::spin(std::make_shared<ImageProc>());
+    std::cout << "Starting ObstDetector node" << std::endl;
+    rclcpp::spin(std::make_shared<ObstDetector>());
     rclcpp::shutdown();
     return 0;
 }

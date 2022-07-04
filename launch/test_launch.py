@@ -14,7 +14,7 @@ def generate_launch_description():
     return LaunchDescription([
         Node(
             package='rmf_camera',
-            executable='image_proc'
+            executable='obst_detector'
         ),
         Node(
             package='image_proc',

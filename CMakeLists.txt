@@ -21,18 +21,18 @@ find_package(Torch REQUIRED)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
-add_executable(image_proc src/image_proc.cpp)
+add_executable(obst_detector src/obst_detector.cpp)
 
-target_link_libraries(image_proc "${TORCH_LIBRARIES}")
-set_property(TARGET image_proc PROPERTY CXX_STANDARD 14)
+target_link_libraries(obst_detector "${TORCH_LIBRARIES}")
+set_property(TARGET obst_detector PROPERTY CXX_STANDARD 14)
 
-target_include_directories(image_proc PUBLIC
+target_include_directories(obst_detector PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(image_proc PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(obst_detector PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 ament_target_dependencies(
-  image_proc
+  obst_detector
   "rclcpp"
   "sensor_msgs"
   "image_transport"
@@ -44,7 +44,7 @@ ament_target_dependencies(
 
 ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/env-hooks/${PROJECT_NAME}.dsv.in")
 
-install(TARGETS image_proc
+install(TARGETS obst_detector
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY

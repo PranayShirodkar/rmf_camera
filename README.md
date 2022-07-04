@@ -2,10 +2,10 @@
 
 launch a gazebo world that has a camera model which is publishing a ros topic
 
-set ros topic name in image_proc.cpp
+set ros topic name in obst_detector.cpp
 
 subscribe to ros topic:
-> ros2 run rmf_camera image_proc
+> ros2 run rmf_camera obst_detector
 
 ## Hard Coded paths
 
@@ -34,8 +34,8 @@ find_package(Torch REQUIRED)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
-target_link_libraries(image_proc "${TORCH_LIBRARIES}")
-set_property(TARGET image_proc PROPERTY CXX_STANDARD 14)
+target_link_libraries(obst_detector "${TORCH_LIBRARIES}")
+set_property(TARGET obst_detector PROPERTY CXX_STANDARD 14)
 
   "Torch"
 ```
