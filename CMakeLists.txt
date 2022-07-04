@@ -42,8 +42,14 @@ ament_target_dependencies(
   "Torch"
 )
 
+ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/env-hooks/${PROJECT_NAME}.dsv.in")
+
 install(TARGETS image_proc
   DESTINATION lib/${PROJECT_NAME})
+
+install(DIRECTORY
+  launch models worlds
+  DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

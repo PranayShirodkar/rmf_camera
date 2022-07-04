@@ -256,7 +256,7 @@ private:
         post_process(original_image, image, detections);
         imshow(OPENCV_WINDOW, image);
         // imwrite("/home/osrc/Pictures/Screenshots/empty_world/1.jpg", image);
-        waitKey(3000);
+        waitKey(3);
     }
 
 public:
@@ -267,10 +267,10 @@ public:
                 // sub_ = image_transport::create_subscription(this, "camera/image_raw",
                 // std::bind(&ImageProc::imageCallback, this, std::placeholders::_1), "raw", custom_qos);
         subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
-                "camera/image_raw", 10, std::bind(&ImageProc::imageCallback, this, std::placeholders::_1));
+                "camera/image_rect", 10, std::bind(&ImageProc::imageCallback, this, std::placeholders::_1));
         publisher_ = this->create_publisher<std_msgs::msg::String>("topic_out", 10);
-        net_ = readNet("/home/osrc/dev_ws/src/rmf_camera/src/yolov5s.onnx");
-        ifstream ifs("/home/osrc/dev_ws/src/rmf_camera/src/coco.names");
+        net_ = readNet("/home/osrc/dev_ws/src/rmf_camera/assets/yolov5s.onnx");
+        ifstream ifs("/home/osrc/dev_ws/src/rmf_camera/assets/coco.names");
         string line;
         while (getline(ifs, line))
         {
