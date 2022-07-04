@@ -52,10 +52,13 @@ private:
     const float SCORE_THRESHOLD = 0.45;
     const float NMS_THRESHOLD = 0.45;
     const float CONFIDENCE_THRESHOLD = 0.25;
-    // const float DISTANCE_TO_GROUND = 2.5/tan(0.3); // CAMERA_Z/cos(CAMERA_PITCH)
-    // const float D = 5.28/cos(0.3); // STANDING_PERSON_X/cos(CAMERA_PITCH)
+
+    // Configurations
     const float D_config = 5.28; // STANDING_PERSON_X
-    const float W_config = 8.67; // measure or calculate D*tan(CAMERA_AFOV/2)
+    const float CAMERA_AFOV = 2;
+    const float CAMERA_PITCH = 0.3;
+    const float CAMERA_TO_HUMAN = D_config/cos(CAMERA_PITCH); // real world distance from camera to center of human bounding box
+    const float W_config = CAMERA_TO_HUMAN*tan(CAMERA_AFOV/2); // width of real world at depth of human bounding box
 
 
     // Members
@@ -180,18 +183,21 @@ private:
             float cx = centroids[idx].x;
             float cy = centroids[idx].y;
             float factor =  cy/(original_image.rows/2);
+            // float pitch_factor = (25/CAMERA_PITCH);
             float depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M;
             if (factor > 1) {
                 depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*factor;
             }
             else {
                 depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*(((1 - factor)*100));
+                // depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*(((1 - factor)*pitch_factor));
             }
             float px = D_config + (depth_per_pixel_m_dynamic * ((original_image.rows/2) - cy));
+            if (px < 0) px = 0.1;
 
             float width_per_pixel_m_dynamic = WIDTH_PER_PIXEL_M * px / D_config;
             float py = width_per_pixel_m_dynamic * ((original_image.cols/2) - cx);
-            float pz = 0;
+            float pz = 0.0;
             positions.push_back(Point3d(px, py, pz));
             printf("3D  P: (%.3f, %.3f, %.3f)\n", px, py, pz);
 
