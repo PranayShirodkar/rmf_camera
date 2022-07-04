@@ -11,6 +11,9 @@
 
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
+  <depend>image_transport</depend>
+  <depend>cv_bridge</depend>
+  <depend>common_interfaces</depend>
 
   <exec_depend>ros2launch</exec_depend>
   <test_depend>ament_lint_auto</test_depend>
