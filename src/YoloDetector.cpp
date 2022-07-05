@@ -19,7 +19,9 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/dnn.hpp>
-#include <opencv2/opencv.hpp>
+
+// Project includes
+#include "BoundingBox3D.hpp"
 
 
 // DNN
@@ -196,8 +198,13 @@ private:
         auto message = std_msgs::msg::String();
         for (size_t i = 0; i < obstacles.size(); i++) {
             string class_label = class_list_[final_class_ids[i]];
-            message.data = class_label + "_" + to_string(i) + " id: " + to_string(final_class_ids[i])
-            + " x: " + to_string(obstacles[i].x) + " y: " + to_string(obstacles[i].y);
+            BoundingBox3D bb = {
+                class_label,  // classification
+                static_cast<int>(i),  // id
+                Point3d(obstacles[i].x, obstacles[i].y, 0.0),  // position
+                Vec3d(1.0, 1.0, 2.0),  // size
+            };
+            message.data = bb.toString();
             RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
             publisher_->publish(message);
         }
