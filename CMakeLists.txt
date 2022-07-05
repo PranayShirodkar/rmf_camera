@@ -48,7 +48,7 @@ install(TARGETS obst_detector
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY
-  launch models worlds
+  launch models assets worlds
   DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)

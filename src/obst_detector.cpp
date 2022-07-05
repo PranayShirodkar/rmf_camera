@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <fstream>
 #include <cmath>
+#include <filesystem>
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
@@ -275,8 +276,11 @@ public:
         subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
                 "camera/image_rect", 10, std::bind(&ObstDetector::imageCallback, this, std::placeholders::_1));
         publisher_ = this->create_publisher<std_msgs::msg::String>("topic_out", 10);
-        net_ = readNet("/home/osrc/dev_ws/src/rmf_camera/assets/yolov5s.onnx");
-        ifstream ifs("/home/osrc/dev_ws/src/rmf_camera/assets/coco.names");
+        auto pwd = string(filesystem::current_path());
+        auto model_filepath = pwd + "/install/rmf_camera/share/rmf_camera/assets/yolov5s.onnx";
+        net_ = readNet(model_filepath);
+        auto labels_filepath = pwd + "/install/rmf_camera/share/rmf_camera/assets/coco.names";
+        ifstream ifs(labels_filepath);
         string line;
         while (getline(ifs, line))
         {
