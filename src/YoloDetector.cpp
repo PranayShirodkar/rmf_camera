@@ -3,7 +3,9 @@
 #include <fstream>
 #include <cmath>
 #include <filesystem>
+#include <memory>
 
+// ROS includes
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
 // #include <sensor_msgs/image_encodings.h>
@@ -11,7 +13,7 @@
 #include <image_transport/image_transport.hpp>
 #include <rclcpp/qos.hpp>
 
-#include <memory>
+// OpenCV includes
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -42,7 +44,7 @@ const Scalar RED = Scalar(0,0,255);
 // const float DEGREE_TO_RAD = 3.14159/180;
 
 
-class ObstDetector : public rclcpp::Node {
+class YoloDetector : public rclcpp::Node {
 private:
 
     const std::string OPENCV_WINDOW = "Image window";
@@ -110,7 +112,7 @@ private:
         vector<int> class_ids;
         vector<float> confidences;
         vector<Rect> boxes;
-        vector<Point> centroids;
+        vector<Point> centroids; // image coordinates, Point is int
         // Resizing factor.
         float x_factor = image.cols / INPUT_WIDTH;
         float y_factor = image.rows / INPUT_HEIGHT;
@@ -139,29 +141,27 @@ private:
                     confidences.push_back(confidence);
                     class_ids.push_back(class_id.x);
                     // Center.
-                    float cx = data[0];
-                    float cy = data[1];
+                    float px = data[0];
+                    float py = data[1];
                     // Box dimension.
                     float w = data[2];
                     float h = data[3];
                     // Bounding box coordinates.
-                    int left = int((cx - 0.5 * w) * x_factor);
-                    int top = int((cy - 0.5 * h) * y_factor);
+                    int left = int((px - 0.5 * w) * x_factor);
+                    int top = int((py - 0.5 * h) * y_factor);
                     int width = int(w * x_factor);
                     int height = int(h * y_factor);
                     // Store good detections in the boxes vector.
                     boxes.push_back(Rect(left, top, width, height));
-                    centroids.push_back(Point(cx * x_factor, cy * y_factor));
+                    centroids.push_back(Point(px * x_factor, py * y_factor));
                 }
             }
             // Jump to the next row.
             data += dimensions;
         }
 
-        // 3D
-        vector<Point3d> positions;
-        const float WIDTH_PER_PIXEL_M = W_config*2/original_image.cols;
-        const float DEPTH_PER_PIXEL_M = D_config*2/original_image.rows;
+        vector<Point2d> obstacles; // camera coordinates, Point2d is double
+        vector<int> final_class_ids;
 
         // Perform Non-Maximum Suppression and draw predictions.
         vector<int> indices;
@@ -180,43 +180,26 @@ private:
             circle(image, centroids[idx], 2, CV_RGB(255,0,0), -1);
             printf("Pixel: (%d, %d)\n", centroids[idx].x, centroids[idx].y);
 
-            // 3D
-            float cx = centroids[idx].x;
-            float cy = centroids[idx].y;
-            float factor =  cy/(original_image.rows/2);
-            // float pitch_factor = (25/CAMERA_PITCH);
-            float depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M;
-            if (factor > 1) {
-                depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*factor;
-            }
-            else {
-                depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*(((1 - factor)*100));
-                // depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*(((1 - factor)*pitch_factor));
-            }
-            float px = D_config + (depth_per_pixel_m_dynamic * ((original_image.rows/2) - cy));
-            if (px < 0) px = 0.1;
-
-            float width_per_pixel_m_dynamic = WIDTH_PER_PIXEL_M * px / D_config;
-            float py = width_per_pixel_m_dynamic * ((original_image.cols/2) - cx);
-            float pz = 0.0;
-            positions.push_back(Point3d(px, py, pz));
-            printf("3D  P: (%.3f, %.3f, %.3f)\n", px, py, pz);
-
-            // publish rmf_obstacle
-            auto message = std_msgs::msg::String();
-            for (size_t i = 0; i < positions.size(); i++) {
-                //class_list_[class_ids[idx]] = "person"
-                message.data = class_list_[class_ids[idx]] + " " + std::to_string(class_ids[idx])
-                + " " + std::to_string(positions[i].x) + " " + std::to_string(positions[i].y) + " " + std::to_string(positions[i].z);
-                RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
-                publisher_->publish(message);
-            }
-
             // Get the label for the class name and its confidence.
             string label = format("%.2f", confidences[idx]);
             label = class_list_[class_ids[idx]] + ":" + label;
             // Draw class labels.
             draw_label(image, label, left, top);
+
+            // save camera coordinates.
+            Point2d obstacle = img_coord_to_cam_coord(centroids[idx], original_image);
+            obstacles.push_back(obstacle);
+            final_class_ids.push_back(class_ids[idx]);
+        }
+
+        // publish rmf_obstacle
+        auto message = std_msgs::msg::String();
+        for (size_t i = 0; i < obstacles.size(); i++) {
+            string class_label = class_list_[final_class_ids[i]];
+            message.data = class_label + "_" + to_string(i) + " id: " + to_string(final_class_ids[i])
+            + " x: " + to_string(obstacles[i].x) + " y: " + to_string(obstacles[i].y);
+            RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
+            publisher_->publish(message);
         }
 
         // Put efficiency information.
@@ -232,6 +215,32 @@ private:
 
         // Draw image center
         circle(image, Point(original_image.cols/2, original_image.rows/2), 2, CV_RGB(255,255,0), -1);
+    }
+
+    Point2d img_coord_to_cam_coord(const Point &centroid, const Mat &original_image) {
+        // img coordinates are pixel x & y position in the frame, px, py
+        // camera coordinates are in bird's eye view (top down), with origin at camera, cx, cy
+        // cx is +ve toward front of camera, cy is +ve toward left of camera
+        const float WIDTH_PER_PIXEL_M = W_config*2/original_image.cols;
+        const float DEPTH_PER_PIXEL_M = D_config*2/original_image.rows;
+        float px = centroid.x;
+        float py = centroid.y;
+        float factor =  py/(original_image.rows/2);
+        // float pitch_factor = (25/CAMERA_PITCH);
+        float depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M;
+        if (factor > 1) {
+            depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*factor;
+        }
+        else {
+            depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*(((1 - factor)*100));
+            // depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*(((1 - factor)*pitch_factor));
+        }
+        float cx = D_config + (depth_per_pixel_m_dynamic * ((original_image.rows/2) - py));
+        if (cx < 0) cx = 0.1;
+
+        float width_per_pixel_m_dynamic = WIDTH_PER_PIXEL_M * cx / D_config;
+        float cy = width_per_pixel_m_dynamic * ((original_image.cols/2) - px);
+        return Point2d(cx, cy);
     }
 
     void draw_label(Mat& input_image, string label, int left, int top)
@@ -267,14 +276,14 @@ private:
     }
 
 public:
-    ObstDetector() : Node("ObstDetector") {
+    YoloDetector() : Node("YoloDetector") {
         cv::namedWindow(OPENCV_WINDOW, cv::WINDOW_AUTOSIZE);
 
         // rmw_qos_profile_t custom_qos = rmw_qos_profile_default;
                 // sub_ = image_transport::create_subscription(this, "camera/image_raw",
-                // std::bind(&ObstDetector::imageCallback, this, std::placeholders::_1), "raw", custom_qos);
+                // std::bind(&YoloDetector::imageCallback, this, std::placeholders::_1), "raw", custom_qos);
         subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
-                "camera/image_rect", 10, std::bind(&ObstDetector::imageCallback, this, std::placeholders::_1));
+                "camera/image_rect", 10, std::bind(&YoloDetector::imageCallback, this, std::placeholders::_1));
         publisher_ = this->create_publisher<std_msgs::msg::String>("topic_out", 10);
         auto pwd = string(filesystem::current_path());
         auto model_filepath = pwd + "/install/rmf_camera/share/rmf_camera/assets/yolov5s.onnx";
@@ -288,7 +297,7 @@ public:
         }
     }
 
-    ~ObstDetector()
+    ~YoloDetector()
     {
         cv::destroyWindow(OPENCV_WINDOW);
     }
@@ -297,8 +306,8 @@ public:
 int main(int argc, char** argv)
 {
     rclcpp::init(argc, argv);
-    std::cout << "Starting ObstDetector node" << std::endl;
-    rclcpp::spin(std::make_shared<ObstDetector>());
+    std::cout << "Starting YoloDetector node" << std::endl;
+    rclcpp::spin(std::make_shared<YoloDetector>());
     rclcpp::shutdown();
     return 0;
 }

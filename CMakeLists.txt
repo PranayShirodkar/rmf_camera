@@ -14,15 +14,15 @@ find_package(common_interfaces REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
 
-add_executable(obst_detector src/obst_detector.cpp)
+add_executable(YoloDetector src/YoloDetector.cpp)
 
-target_include_directories(obst_detector PUBLIC
+target_include_directories(YoloDetector PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(obst_detector PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(YoloDetector PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 ament_target_dependencies(
-  obst_detector
+  YoloDetector
   "rclcpp"
   "sensor_msgs"
   "image_transport"
@@ -33,7 +33,7 @@ ament_target_dependencies(
 
 ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/env-hooks/${PROJECT_NAME}.dsv.in")
 
-install(TARGETS obst_detector
+install(TARGETS YoloDetector
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY

@@ -14,7 +14,7 @@ def generate_launch_description():
     return LaunchDescription([
         Node(
             package='rmf_camera',
-            executable='obst_detector'
+            executable='YoloDetector'
         ),
         Node(
             package='image_proc',
