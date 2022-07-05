@@ -13,6 +13,7 @@ find_package(image_transport REQUIRED)
 find_package(common_interfaces REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(rmf_obstacle_ros2 REQUIRED)
 
 add_executable(YoloDetector src/YoloDetector.cpp)
 
@@ -23,12 +24,13 @@ target_compile_features(YoloDetector PUBLIC c_std_99 cxx_std_17)  # Require C99 
 
 ament_target_dependencies(
   YoloDetector
-  "rclcpp"
-  "sensor_msgs"
-  "image_transport"
-  "cv_bridge"
-  "common_interfaces"
-  "OpenCV"
+  rclcpp
+  sensor_msgs
+  image_transport
+  cv_bridge
+  common_interfaces
+  OpenCV
+  rmf_obstacle_ros2
 )
 
 ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/env-hooks/${PROJECT_NAME}.dsv.in")

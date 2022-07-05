@@ -22,6 +22,7 @@
 
 // Project includes
 #include "BoundingBox3D.hpp"
+#include "rmf_obstacle_ros2/Detector.hpp"
 
 
 // DNN
