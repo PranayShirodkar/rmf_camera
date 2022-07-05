@@ -5,10 +5,6 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-set(CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/lib/libtorch)
-set(CMAKE_INSTALL_RPATH "${CMAKE_CURRENT_SOURCE_DIR}/lib/libtorch/lib")
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -17,14 +13,8 @@ find_package(image_transport REQUIRED)
 find_package(common_interfaces REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(Torch REQUIRED)
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 add_executable(obst_detector src/obst_detector.cpp)
-
-target_link_libraries(obst_detector "${TORCH_LIBRARIES}")
-set_property(TARGET obst_detector PROPERTY CXX_STANDARD 14)
 
 target_include_directories(obst_detector PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -39,7 +29,6 @@ ament_target_dependencies(
   "cv_bridge"
   "common_interfaces"
   "OpenCV"
-  "Torch"
 )
 
 ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/env-hooks/${PROJECT_NAME}.dsv.in")
