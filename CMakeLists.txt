@@ -14,8 +14,54 @@ find_package(common_interfaces REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(rmf_obstacle_ros2 REQUIRED)
+find_package(pluginlib REQUIRED)
 
+
+#=============================================================
+
+add_library(rmf_human_detector SHARED src/HumanDetector.cpp)
+
+target_include_directories(rmf_human_detector
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    ${rmf_obstacle_ros2_INCLUDE_DIRS}
+    ${pluginlib_INCLUDE_DIRS}
+    ${rclcpp_INCLUDE_DIRS}
+)
+
+target_link_libraries(rmf_human_detector
+  PUBLIC
+    rmf_obstacle_ros2::rmf_obstacle_ros2
+    pluginlib::pluginlib
+    rclcpp::rclcpp
+)
+
+target_compile_features(rmf_human_detector INTERFACE cxx_std_17)
+target_compile_definitions(rmf_human_detector PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
+
+pluginlib_export_plugin_description_file(rmf_obstacle_ros2 plugins.xml)
+
+ament_export_libraries(
+  rmf_human_detector
+)
+# ament_export_targets(
+#   export_${PROJECT_NAME}
+# )
+
+ament_export_dependencies(rclcpp rmf_obstacle_ros2 pluginlib)
+
+install(
+  TARGETS rmf_human_detector
+  EXPORT rmf_human_detector
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+#=============================================================
 add_executable(YoloDetector src/YoloDetector.cpp)
+
 
 target_include_directories(YoloDetector PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
