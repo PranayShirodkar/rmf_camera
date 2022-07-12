@@ -1,6 +1,6 @@
-#include <rmf_obstacle_msgs/msg/obstacles.hpp>
+#include <std_msgs/msg/string.hpp>
 
-#include "HumanDetector.hpp"
+#include <rmf_camera/HumanDetector.hpp>
 
 namespace rmf_human_detector {
 
@@ -10,8 +10,7 @@ void HumanDetector::initialize(
   DetectorCallback cb)
 {
   _cb = std::move(cb);
-  RCLCPP_INFO(node.get_logger(), "Publishing: '%s'", "initialize end");
-
+  RCLCPP_INFO(node.get_logger(), "Publishing: '%s'", "initialize start");
 
   // detect all camera topics being published from gazebo world
 

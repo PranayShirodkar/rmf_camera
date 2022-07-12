@@ -21,9 +21,9 @@
 #include <opencv2/dnn.hpp>
 
 // Project includes
-#include "YoloDetector.hpp"
-#include "BoundingBox3D.hpp"
-#include "rmf_obstacle_ros2/Detector.hpp"
+#include <rmf_camera/YoloDetector.hpp>
+#include <rmf_camera/BoundingBox3D.hpp>
+#include <rmf_obstacle_ros2/Detector.hpp>
 
 // Namespaces.
 using namespace cv;

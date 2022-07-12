@@ -5,6 +5,8 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+include(GNUInstallDirs)
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -45,11 +47,13 @@ pluginlib_export_plugin_description_file(rmf_obstacle_ros2 plugins.xml)
 ament_export_libraries(
   rmf_human_detector
 )
-# ament_export_targets(
-#   export_${PROJECT_NAME}
-# )
 
 ament_export_dependencies(rclcpp rmf_obstacle_ros2 pluginlib)
+
+install(
+  DIRECTORY include/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
 
 install(
   TARGETS rmf_human_detector
@@ -58,8 +62,8 @@ install(
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
-
 #=============================================================
+
 add_executable(YoloDetector src/YoloDetector.cpp)
 
 

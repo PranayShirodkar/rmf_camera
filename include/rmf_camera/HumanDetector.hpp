@@ -1,7 +1,9 @@
 #ifndef HUMANDETECTOR_HPP
 #define HUMANDETECTOR_HPP
 
+#include <rclcpp/rclcpp.hpp>
 #include <rmf_obstacle_ros2/Detector.hpp>
+#include <rmf_obstacle_msgs/msg/obstacles.hpp>
 
 namespace rmf_human_detector {
 //==============================================================================
