@@ -18,10 +18,9 @@ find_package(OpenCV REQUIRED)
 find_package(rmf_obstacle_ros2 REQUIRED)
 find_package(pluginlib REQUIRED)
 
-
 #=============================================================
 
-add_library(rmf_human_detector SHARED src/HumanDetector.cpp)
+add_library(rmf_human_detector SHARED src/HumanDetector.cpp src/YoloDetector.cpp)
 
 target_include_directories(rmf_human_detector
   PUBLIC
@@ -30,6 +29,8 @@ target_include_directories(rmf_human_detector
     ${rmf_obstacle_ros2_INCLUDE_DIRS}
     ${pluginlib_INCLUDE_DIRS}
     ${rclcpp_INCLUDE_DIRS}
+    ${cv_bridge_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
 )
 
 target_link_libraries(rmf_human_detector
@@ -37,6 +38,12 @@ target_link_libraries(rmf_human_detector
     rmf_obstacle_ros2::rmf_obstacle_ros2
     pluginlib::pluginlib
     rclcpp::rclcpp
+)
+
+ament_target_dependencies(rmf_human_detector
+  PUBLIC
+    cv_bridge
+    OpenCV
 )
 
 target_compile_features(rmf_human_detector INTERFACE cxx_std_17)
@@ -48,7 +55,7 @@ ament_export_libraries(
   rmf_human_detector
 )
 
-ament_export_dependencies(rclcpp rmf_obstacle_ros2 pluginlib)
+ament_export_dependencies(rclcpp rmf_obstacle_ros2 pluginlib cv_bridge OpenCV)
 
 install(
   DIRECTORY include/
@@ -76,9 +83,7 @@ ament_target_dependencies(
   YoloDetector
   rclcpp
   sensor_msgs
-  image_transport
   cv_bridge
-  common_interfaces
   OpenCV
   rmf_obstacle_ros2
 )

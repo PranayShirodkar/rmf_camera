@@ -5,25 +5,12 @@
 #include <filesystem>
 #include <memory>
 
-// ROS includes
-#include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/image.hpp>
-// #include <sensor_msgs/image_encodings.h>
-#include <std_msgs/msg/string.hpp>
-#include <image_transport/image_transport.hpp>
-#include <rclcpp/qos.hpp>
-
 // OpenCV includes
 #include <cv_bridge/cv_bridge.h>
-#include <opencv2/opencv.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/dnn.hpp>
 
 // Project includes
 #include <rmf_camera/YoloDetector.hpp>
 #include <rmf_camera/BoundingBox3D.hpp>
-#include <rmf_obstacle_ros2/Detector.hpp>
 
 // Namespaces.
 using namespace cv;
@@ -174,8 +161,8 @@ void YoloDetector::post_process(const Mat &original_image, Mat &image, vector<Ma
             Vec3d(1.0, 1.0, 2.0),  // size
         };
         message.data = bb.toString();
-        RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
-        publisher_->publish(message);
+        // RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
+        // publisher_->publish(message);
     }
 
     // Put efficiency information.
@@ -248,18 +235,19 @@ void YoloDetector::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr &
     post_process(original_image, image, detections);
     imshow(OPENCV_WINDOW, image);
     // imwrite("/home/osrc/Pictures/Screenshots/empty_world/1.jpg", image);
+
     waitKey(3);
 }
 
-YoloDetector::YoloDetector() : Node("YoloDetector") {
+YoloDetector::YoloDetector() {
     cv::namedWindow(OPENCV_WINDOW, cv::WINDOW_AUTOSIZE);
 
     // rmw_qos_profile_t custom_qos = rmw_qos_profile_default;
             // sub_ = image_transport::create_subscription(this, "camera/image_raw",
             // std::bind(&YoloDetector::imageCallback, this, std::placeholders::_1), "raw", custom_qos);
-    subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
-            "camera/image_rect", 10, std::bind(&YoloDetector::imageCallback, this, std::placeholders::_1));
-    publisher_ = this->create_publisher<std_msgs::msg::String>("topic_out", 10);
+    // subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
+    //         "camera/image_rect", 10, std::bind(&YoloDetector::imageCallback, this, std::placeholders::_1));
+    // publisher_ = this->create_publisher<Obstacles>("topic_out", rclcpp::SensorDataQoS());
     auto pwd = string(filesystem::current_path());
     auto model_filepath = pwd + "/install/rmf_camera/share/rmf_camera/assets/yolov5s.onnx";
     net_ = readNet(model_filepath);
@@ -281,7 +269,7 @@ int main(int argc, char** argv)
 {
     rclcpp::init(argc, argv);
     std::cout << "Starting YoloDetector node" << std::endl;
-    rclcpp::spin(std::make_shared<YoloDetector>());
+    // rclcpp::spin(std::make_shared<YoloDetector>());
     rclcpp::shutdown();
     return 0;
 }

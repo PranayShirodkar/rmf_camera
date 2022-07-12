@@ -1,7 +1,9 @@
 #ifndef HUMANDETECTOR_HPP
 #define HUMANDETECTOR_HPP
 
+#include <thread>
 #include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/image.hpp>
 #include <rmf_obstacle_ros2/Detector.hpp>
 #include <rmf_obstacle_msgs/msg/obstacles.hpp>
 
@@ -21,9 +23,14 @@ public:
   /// Documentation inherited
   std::string name() const final;
 
+  ~HumanDetector();
+
 private:
   DetectorCallback _cb;
   std::string _name = "rmf_human_detector";
+  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr _sub;
+  rclcpp::Node::SharedPtr _node;
+  std::thread _thread;
 
 };
 

@@ -1,7 +1,18 @@
 #ifndef YOLODETECTOR_HPP
 #define YOLODETECTOR_HPP
 
-class YoloDetector : public rclcpp::Node {
+#include <string>
+
+// ROS includes
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/image.hpp>
+#include <std_msgs/msg/string.hpp>
+
+// OpenCV includes
+#include <opencv2/opencv.hpp>
+#include <opencv2/dnn.hpp>
+
+class YoloDetector {
 private:
 
     // Constants
@@ -33,11 +44,11 @@ private:
     void post_process(const cv::Mat &original_image, cv::Mat &image, std::vector<cv::Mat> &detections);
     cv::Point2d img_coord_to_cam_coord(const cv::Point &centroid, const cv::Mat &original_image);
     void draw_label(cv::Mat& input_image, std::string label, int left, int top);
-    void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr &msg);
 
 public:
     YoloDetector();
     ~YoloDetector();
+    void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr &msg);
 };
 
 #endif
