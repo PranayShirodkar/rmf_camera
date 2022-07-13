@@ -29,21 +29,54 @@ const Scalar BLUE = Scalar(255, 178, 50);
 const Scalar YELLOW = Scalar(0, 255, 255);
 const Scalar RED = Scalar(0,0,255);
 
+YoloDetector::YoloDetector() {
+    cv::namedWindow(OPENCV_WINDOW, cv::WINDOW_AUTOSIZE);
+
+    auto pwd = string(filesystem::current_path());
+    auto model_filepath = pwd + "/install/rmf_camera/share/rmf_camera/assets/yolov5s.onnx";
+    net_ = readNet(model_filepath);
+    auto labels_filepath = pwd + "/install/rmf_camera/share/rmf_camera/assets/coco.names";
+    ifstream ifs(labels_filepath);
+    string line;
+    while (getline(ifs, line))
+    {
+        class_list_.push_back(line);
+    }
+}
+
+YoloDetector::~YoloDetector()
+{
+    cv::destroyWindow(OPENCV_WINDOW);
+}
+
+YoloDetector::Obstacles YoloDetector::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr &msg)
+{
+    // printf("Image received \tSize: %dx%d - Timestamp: %u.%u sec - Encoding: %s\n",
+    //                 msg->width, msg->height,
+    //                 msg->header.stamp.sec,msg->header.stamp.nanosec, msg->encoding.c_str());
+
+    // bridge from ROS image type to OpenCV image type
+    cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, msg->encoding);
+    Mat original_image = cv_ptr->image;
+    // Mat original_image = imread("/home/osrc/Pictures/Screenshots/empty_world/test.png");
+
+    // format image, forward propagate and post process
+    Mat image = format_yolov5(original_image);
+    vector<Mat> detections = detect(image);
+    Obstacles rmf_obstacles = post_process(original_image, image, detections);
+
+    // display
+    imshow(OPENCV_WINDOW, image);
+    // imwrite("/home/osrc/Pictures/Screenshots/empty_world/1.jpg", image);
+    waitKey(3);
+    return rmf_obstacles;
+}
+
 Mat YoloDetector::format_yolov5(const Mat &source)
 {
     int col = source.cols;
     int row = source.rows;
     int _max = MAX(col, row);
-    // int xpad = 0;
-    // int ypad = 0;
-    // if (col > row) {
-    //     xpad = 0;
-    //     ypad = (col - row) / 2;
-    // }
-    // else {
-    //     xpad = (row - col) / 2;
-    //     ypad = 0;
-    // }
 
     Mat result = Mat::zeros(_max, _max, CV_8UC3);
     source.copyTo(result(Rect(0, 0, col, row)));
@@ -120,81 +153,31 @@ YoloDetector::Obstacles YoloDetector::post_process(const Mat &original_image, Ma
         data += dimensions;
     }
 
-    vector<Point2d> obstacles; // camera coordinates, Point2d is double
-    vector<int> final_class_ids;
-
-    // Perform Non-Maximum Suppression and draw predictions.
-    vector<int> indices;
+    // Perform Non-Maximum Suppression.
+    vector<int> indices; // will contain indices of final bounding boxes
     NMSBoxes(boxes, confidences, SCORE_THRESHOLD, NMS_THRESHOLD, indices);
-    for (size_t i = 0; i < indices.size(); i++)
+
+    // use indices vector to get the final vectors
+    vector<int> final_class_ids;
+    vector<float> final_confidences;
+    vector<Rect> final_boxes;
+    vector<Point> final_centroids; // image coordinates, (int, int)
+    vector<Point2d> final_obstacles; // camera coordinates, (double, double)
+    for (auto i : indices)
     {
-        int idx = indices[i];
-        Rect box = boxes[idx];
-        int left = box.x;
-        int top = box.y;
-        int width = box.width;
-        int height = box.height;
-        // Draw bounding box.
-        rectangle(image, Point(left, top), Point(left + width, top + height), BLUE, 3*THICKNESS);
-        // Draw centroid.
-        circle(image, centroids[idx], 2, CV_RGB(255,0,0), -1);
-        printf("Pixel: (%d, %d)\n", centroids[idx].x, centroids[idx].y);
-
-        // Get the label for the class name and its confidence.
-        string label = format("%.2f", confidences[idx]);
-        label = class_list_[class_ids[idx]] + ":" + label;
-        // Draw class labels.
-        draw_label(image, label, left, top);
-
-        // save camera coordinates.
-        Point2d obstacle = img_coord_to_cam_coord(centroids[idx], original_image);
-        obstacles.push_back(obstacle);
-        final_class_ids.push_back(class_ids[idx]);
+        final_class_ids.push_back(class_ids[i]);
+        final_confidences.push_back(confidences[i]);
+        final_boxes.push_back(boxes[i]);
+        final_centroids.push_back(centroids[i]);
+        Point2d obstacle = img_coord_to_cam_coord(centroids[i], original_image);
+        final_obstacles.push_back(obstacle);
     }
 
-    // publish rmf_obstacle
-    auto obstacles_msg = Obstacles();
-    int num_obstacles = 4;
-    int id = 12;
+    // draw to image
+    drawing(original_image, image, final_class_ids, final_confidences, final_boxes, final_centroids);
 
-    // prepare obstacle_msg objects and add to obstacles_msg
-    obstacles_msg.obstacles.reserve(num_obstacles);
-    for (int i = 0; i < num_obstacles; i++) {
-        auto obstacle = rmf_obstacle_msgs::msg::Obstacle();
-        // auto obstacle = rmf_obstacle_msgs::build<rmf_obstacle_msgs::msg::Obstacle>();
-        obstacle.id = id++;
-        obstacle.header.frame_id = "some stuff";
-
-        obstacles_msg.obstacles.push_back(obstacle);
-    }
-
-    auto message = std_msgs::msg::String();
-    for (size_t i = 0; i < obstacles.size(); i++) {
-        string class_label = class_list_[final_class_ids[i]];
-        BoundingBox3D bb = {
-            class_label,  // classification
-            static_cast<int>(i),  // id
-            Point3d(obstacles[i].x, obstacles[i].y, 0.0),  // position
-            Vec3d(1.0, 1.0, 2.0),  // size
-        };
-        message.data = bb.toString();
-        // RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
-        // publisher_->publish(message);
-    }
-
-    // Put efficiency information.
-    // The function getPerfProfile returns the overall time for inference(t) and the timings for each of the layers(in layersTimes).
-    vector<double> layersTimes;
-    double freq = getTickFrequency() / 1000;
-    double t = net_.getPerfProfile(layersTimes) / freq;
-    string label = format("Inference time : %.2f ms", t);
-    putText(image, label, Point(20, 40), FONT_FACE, FONT_SCALE, RED);
-
-    // Slicing to crop the image
-    image = image(Range(0,original_image.rows),Range(0,original_image.cols));
-
-    // Draw image center
-    circle(image, Point(original_image.cols/2, original_image.rows/2), 2, CV_RGB(255,255,0), -1);
+    // generate rmf_obstacles
+    auto obstacles_msg = cam_coord_to_rmf_obstacle(final_class_ids, final_confidences, final_obstacles);
 
     return obstacles_msg;
 }
@@ -226,7 +209,78 @@ Point2d YoloDetector::img_coord_to_cam_coord(const Point &centroid, const Mat &o
     return Point2d(cx, cy);
 }
 
-void YoloDetector::draw_label(Mat& input_image, string label, int left, int top)
+YoloDetector::Obstacles YoloDetector::cam_coord_to_rmf_obstacle(const vector<int> &final_class_ids, const vector<float> &final_confidences, const vector<Point2d> &final_obstacles)
+{
+    auto obstacles_msg = Obstacles();
+    int num_obstacles = 4;
+    int id = 12;
+
+    // prepare obstacle_msg objects and add to obstacles_msg
+    obstacles_msg.obstacles.reserve(num_obstacles);
+    for (int i = 0; i < num_obstacles; i++) {
+        auto obstacle = rmf_obstacle_msgs::msg::Obstacle();
+        // auto obstacle = rmf_obstacle_msgs::build<rmf_obstacle_msgs::msg::Obstacle>();
+        obstacle.id = id++;
+        obstacle.header.frame_id = "some stuff";
+
+        obstacles_msg.obstacles.push_back(obstacle);
+    }
+
+    auto message = std_msgs::msg::String();
+    for (size_t i = 0; i < final_obstacles.size(); i++) {
+        string class_label = class_list_[final_class_ids[i]];
+        BoundingBox3D bb = {
+            class_label,  // classification
+            static_cast<int>(i),  // id
+            Point3d(final_obstacles[i].x, final_obstacles[i].y, 0.0),  // position
+            Vec3d(1.0, 1.0, 2.0),  // size
+        };
+        message.data = bb.toString();
+        // RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
+        // publisher_->publish(message);
+    }
+
+    return obstacles_msg;
+}
+
+void YoloDetector::drawing(const Mat &original_image, Mat &image, const vector<int> &final_class_ids, const vector<float> &final_confidences, const vector<Rect> &final_boxes, const vector<Point> &final_centroids)
+{
+    for (size_t i = 0; i < final_class_ids.size(); i++)
+    {
+        Rect box = final_boxes[i];
+        int left = box.x;
+        int top = box.y;
+        int width = box.width;
+        int height = box.height;
+        // Draw bounding box.
+        rectangle(image, Point(left, top), Point(left + width, top + height), BLUE, 3*THICKNESS);
+        // Draw centroid.
+        circle(image, final_centroids[i], 2, CV_RGB(255,0,0), -1);
+        printf("Pixel: (%d, %d)\n", final_centroids[i].x, final_centroids[i].y);
+
+        // Get the label for the class name and its confidence.
+        string label = format("%.2f", final_confidences[i]);
+        label = class_list_[final_class_ids[i]] + ":" + label;
+        // Draw class labels.
+        draw_label(image, label, left, top);
+    }
+
+    // Put efficiency information.
+    // The function getPerfProfile returns the overall time for inference(t) and the timings for each of the layers(in layersTimes).
+    vector<double> layersTimes;
+    double freq = getTickFrequency() / 1000;
+    double t = net_.getPerfProfile(layersTimes) / freq;
+    string label = format("Inference time : %.2f ms", t);
+    putText(image, label, Point(20, 40), FONT_FACE, FONT_SCALE, RED);
+
+    // Slicing to crop the image
+    image = image(Range(0,original_image.rows),Range(0,original_image.cols));
+
+    // Draw image center
+    circle(image, Point(original_image.cols/2, original_image.rows/2), 2, CV_RGB(255,255,0), -1);
+}
+
+void YoloDetector::draw_label(Mat &input_image, string label, int left, int top)
 {
     // Display the label at the top of the bounding box.
     int baseLine;
@@ -240,51 +294,6 @@ void YoloDetector::draw_label(Mat& input_image, string label, int left, int top)
     rectangle(input_image, tlc, brc, BLACK, FILLED);
     // Put the label on the black rectangle.
     putText(input_image, label, Point(left, top + label_size.height), FONT_FACE, FONT_SCALE, YELLOW, THICKNESS);
-}
-
-YoloDetector::Obstacles YoloDetector::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr &msg)
-{
-    // printf("Image received \tSize: %dx%d - Timestamp: %u.%u sec - Encoding: %s\n",
-    //                 msg->width, msg->height,
-    //                 msg->header.stamp.sec,msg->header.stamp.nanosec, msg->encoding.c_str());
-    cv_bridge::CvImagePtr cv_ptr;
-    cv_ptr = cv_bridge::toCvCopy(msg, msg->encoding);
-    Mat original_image = cv_ptr->image;
-    // Mat original_image = imread("/home/osrc/Pictures/Screenshots/empty_world/test.png");
-    Mat image = format_yolov5(original_image);
-    vector<Mat> detections = detect(image);
-    Obstacles rmf_obstacles = post_process(original_image, image, detections);
-    imshow(OPENCV_WINDOW, image);
-    // imwrite("/home/osrc/Pictures/Screenshots/empty_world/1.jpg", image);
-
-    waitKey(3);
-    return rmf_obstacles;
-}
-
-YoloDetector::YoloDetector() {
-    cv::namedWindow(OPENCV_WINDOW, cv::WINDOW_AUTOSIZE);
-
-    // rmw_qos_profile_t custom_qos = rmw_qos_profile_default;
-            // sub_ = image_transport::create_subscription(this, "camera/image_raw",
-            // std::bind(&YoloDetector::imageCallback, this, std::placeholders::_1), "raw", custom_qos);
-    // subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
-    //         "camera/image_rect", 10, std::bind(&YoloDetector::imageCallback, this, std::placeholders::_1));
-    // publisher_ = this->create_publisher<Obstacles>("topic_out", rclcpp::SensorDataQoS());
-    auto pwd = string(filesystem::current_path());
-    auto model_filepath = pwd + "/install/rmf_camera/share/rmf_camera/assets/yolov5s.onnx";
-    net_ = readNet(model_filepath);
-    auto labels_filepath = pwd + "/install/rmf_camera/share/rmf_camera/assets/coco.names";
-    ifstream ifs(labels_filepath);
-    string line;
-    while (getline(ifs, line))
-    {
-        class_list_.push_back(line);
-    }
-}
-
-YoloDetector::~YoloDetector()
-{
-    cv::destroyWindow(OPENCV_WINDOW);
 }
 
 int main(int argc, char** argv)

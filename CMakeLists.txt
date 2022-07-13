@@ -71,27 +71,27 @@ install(
 )
 #=============================================================
 
-add_executable(YoloDetector src/YoloDetector.cpp)
+# add_executable(YoloDetector src/YoloDetector.cpp)
 
 
-target_include_directories(YoloDetector PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(YoloDetector PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+# target_include_directories(YoloDetector PUBLIC
+#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#   $<INSTALL_INTERFACE:include>)
+# target_compile_features(YoloDetector PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
-ament_target_dependencies(
-  YoloDetector
-  rclcpp
-  sensor_msgs
-  cv_bridge
-  OpenCV
-  rmf_obstacle_ros2
-)
+# ament_target_dependencies(
+#   YoloDetector
+#   rclcpp
+#   sensor_msgs
+#   cv_bridge
+#   OpenCV
+#   rmf_obstacle_ros2
+# )
 
-ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/env-hooks/${PROJECT_NAME}.dsv.in")
+# ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/env-hooks/${PROJECT_NAME}.dsv.in")
 
-install(TARGETS YoloDetector
-  DESTINATION lib/${PROJECT_NAME})
+# install(TARGETS YoloDetector
+#   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY
   launch models assets worlds
