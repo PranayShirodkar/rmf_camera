@@ -11,6 +11,7 @@
 // Project includes
 #include <rmf_camera/YoloDetector.hpp>
 #include <rmf_camera/BoundingBox3D.hpp>
+#include <rmf_obstacle_msgs/msg/obstacles.hpp>
 
 // Namespaces.
 using namespace cv;
@@ -28,7 +29,8 @@ const Scalar BLUE = Scalar(255, 178, 50);
 const Scalar YELLOW = Scalar(0, 255, 255);
 const Scalar RED = Scalar(0,0,255);
 
-Mat YoloDetector::format_yolov5(const Mat &source) {
+Mat YoloDetector::format_yolov5(const Mat &source)
+{
     int col = source.cols;
     int row = source.rows;
     int _max = MAX(col, row);
@@ -63,7 +65,7 @@ vector<Mat> YoloDetector::detect(Mat &input_image)
     return outputs;
 }
 
-void YoloDetector::post_process(const Mat &original_image, Mat &image, vector<Mat> &detections)
+YoloDetector::Obstacles YoloDetector::post_process(const Mat &original_image, Mat &image, vector<Mat> &detections)
 {
     // Initialize vectors to hold respective outputs while unwrapping     detections.
     vector<int> class_ids;
@@ -151,6 +153,21 @@ void YoloDetector::post_process(const Mat &original_image, Mat &image, vector<Ma
     }
 
     // publish rmf_obstacle
+    auto obstacles_msg = Obstacles();
+    int num_obstacles = 4;
+    int id = 12;
+
+    // prepare obstacle_msg objects and add to obstacles_msg
+    obstacles_msg.obstacles.reserve(num_obstacles);
+    for (int i = 0; i < num_obstacles; i++) {
+        auto obstacle = rmf_obstacle_msgs::msg::Obstacle();
+        // auto obstacle = rmf_obstacle_msgs::build<rmf_obstacle_msgs::msg::Obstacle>();
+        obstacle.id = id++;
+        obstacle.header.frame_id = "some stuff";
+
+        obstacles_msg.obstacles.push_back(obstacle);
+    }
+
     auto message = std_msgs::msg::String();
     for (size_t i = 0; i < obstacles.size(); i++) {
         string class_label = class_list_[final_class_ids[i]];
@@ -178,9 +195,12 @@ void YoloDetector::post_process(const Mat &original_image, Mat &image, vector<Ma
 
     // Draw image center
     circle(image, Point(original_image.cols/2, original_image.rows/2), 2, CV_RGB(255,255,0), -1);
+
+    return obstacles_msg;
 }
 
-Point2d YoloDetector::img_coord_to_cam_coord(const Point &centroid, const Mat &original_image) {
+Point2d YoloDetector::img_coord_to_cam_coord(const Point &centroid, const Mat &original_image)
+{
     // img coordinates are pixel x & y position in the frame, px, py
     // camera coordinates are in bird's eye view (top down), with origin at camera, cx, cy
     // cx is +ve toward front of camera, cy is +ve toward left of camera
@@ -222,7 +242,8 @@ void YoloDetector::draw_label(Mat& input_image, string label, int left, int top)
     putText(input_image, label, Point(left, top + label_size.height), FONT_FACE, FONT_SCALE, YELLOW, THICKNESS);
 }
 
-void YoloDetector::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr &msg) {
+YoloDetector::Obstacles YoloDetector::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr &msg)
+{
     // printf("Image received \tSize: %dx%d - Timestamp: %u.%u sec - Encoding: %s\n",
     //                 msg->width, msg->height,
     //                 msg->header.stamp.sec,msg->header.stamp.nanosec, msg->encoding.c_str());
@@ -232,11 +253,12 @@ void YoloDetector::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr &
     // Mat original_image = imread("/home/osrc/Pictures/Screenshots/empty_world/test.png");
     Mat image = format_yolov5(original_image);
     vector<Mat> detections = detect(image);
-    post_process(original_image, image, detections);
+    Obstacles rmf_obstacles = post_process(original_image, image, detections);
     imshow(OPENCV_WINDOW, image);
     // imwrite("/home/osrc/Pictures/Screenshots/empty_world/1.jpg", image);
 
     waitKey(3);
+    return rmf_obstacles;
 }
 
 YoloDetector::YoloDetector() {

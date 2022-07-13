@@ -6,6 +6,7 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <rmf_obstacle_ros2/Detector.hpp>
 #include <rmf_obstacle_msgs/msg/obstacles.hpp>
+#include <rmf_camera/YoloDetector.hpp>
 
 namespace rmf_human_detector {
 //==============================================================================
@@ -23,17 +24,36 @@ public:
   /// Documentation inherited
   std::string name() const final;
 
+  HumanDetector();
   ~HumanDetector();
 
 private:
-  DetectorCallback _cb;
-  std::string _name = "rmf_human_detector";
-  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr _sub;
-  rclcpp::Node::SharedPtr _node;
-  std::thread _thread;
+  struct Data
+  {
+    DetectorCallback _cb;
+    std::string _name = "rmf_human_detector";
+    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr _sub;
+    rclcpp::Node::SharedPtr _node;
+    std::thread _thread;
+    std::shared_ptr<YoloDetector> _yoloDetector;
+
+    Data()
+    {
+      _node = std::make_shared<rclcpp::Node>("human_detector_node");
+      _thread = std::thread(
+        [n = _node]()
+        {
+          while(rclcpp::ok())
+            rclcpp::spin_some(n);
+        }
+      );
+      _yoloDetector = std::make_shared<YoloDetector>();
+    }
+  };
+  std::shared_ptr<Data> _data;
 
 };
 
 } // namespace rmf_human_detector
 
-#endif
+#endif // HUMANDETECTOR_HPP

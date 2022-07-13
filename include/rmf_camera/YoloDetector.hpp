@@ -12,7 +12,18 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/dnn.hpp>
 
-class YoloDetector {
+// Project includes
+#include <rmf_obstacle_msgs/msg/obstacles.hpp>
+
+class YoloDetector
+{
+public:
+    using Obstacles = rmf_obstacle_msgs::msg::Obstacles;
+
+    YoloDetector();
+    ~YoloDetector();
+    Obstacles imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr &msg);
+
 private:
 
     // Constants
@@ -39,16 +50,13 @@ private:
     std::vector<std::string> class_list_;
     cv::dnn::Net net_;
 
+    // Methods
     cv::Mat format_yolov5(const cv::Mat &source);
     std::vector<cv::Mat> detect(cv::Mat &input_image);
-    void post_process(const cv::Mat &original_image, cv::Mat &image, std::vector<cv::Mat> &detections);
+    Obstacles post_process(const cv::Mat &original_image, cv::Mat &image, std::vector<cv::Mat> &detections);
     cv::Point2d img_coord_to_cam_coord(const cv::Point &centroid, const cv::Mat &original_image);
     void draw_label(cv::Mat& input_image, std::string label, int left, int top);
 
-public:
-    YoloDetector();
-    ~YoloDetector();
-    void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr &msg);
 };
 
-#endif
+#endif // YOLODETECTOR_HPP
