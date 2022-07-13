@@ -65,6 +65,11 @@ YoloDetector::Obstacles YoloDetector::imageCallback(const sensor_msgs::msg::Imag
     vector<Mat> detections = detect(image);
     Obstacles rmf_obstacles = post_process(original_image, image, detections);
 
+    for (auto &obstacle : rmf_obstacles.obstacles)
+    {
+      obstacle.header = msg->header;
+    }
+
     // display
     imshow(OPENCV_WINDOW, image);
     // imwrite("/home/osrc/Pictures/Screenshots/empty_world/1.jpg", image);
@@ -211,19 +216,37 @@ Point2d YoloDetector::img_coord_to_cam_coord(const Point &centroid, const Mat &o
 
 YoloDetector::Obstacles YoloDetector::cam_coord_to_rmf_obstacle(const vector<int> &final_class_ids, const vector<float> &final_confidences, const vector<Point2d> &final_obstacles)
 {
-    auto obstacles_msg = Obstacles();
-    int num_obstacles = 4;
-    int id = 12;
+    auto rmf_obstacles_msg = Obstacles();
 
-    // prepare obstacle_msg objects and add to obstacles_msg
-    obstacles_msg.obstacles.reserve(num_obstacles);
-    for (int i = 0; i < num_obstacles; i++) {
+    // prepare obstacle_msg objects and add to rmf_obstacles_msg
+    rmf_obstacles_msg.obstacles.reserve(final_obstacles.size());
+    for (size_t i = 0; i < final_obstacles.size(); i++) {
         auto obstacle = rmf_obstacle_msgs::msg::Obstacle();
-        // auto obstacle = rmf_obstacle_msgs::build<rmf_obstacle_msgs::msg::Obstacle>();
-        obstacle.id = id++;
-        obstacle.header.frame_id = "some stuff";
+        // auto obstacle2 = rmf_obstacle_msgs::build<rmf_obstacle_msgs::msg::Obstacle>()
+        // .header()
+        // .id()
+        // .source()
+        // .level_name()
+        // .classification()
+        // .bbox()
+        // .data_resolution()
+        // .data()
+        // .lifetime()
+        // .action();
+        obstacle.id = final_class_ids[i];
+        obstacle.classification = class_list_[final_class_ids[i]];
+        obstacle.bbox.center.position.x = final_obstacles[i].x;
+        obstacle.bbox.center.position.y = final_obstacles[i].y;
+        obstacle.bbox.center.position.z = 1.0;
+        // obstacle.bbox.center.orientation.x =
+        // obstacle.bbox.center.orientation.y =
+        // obstacle.bbox.center.orientation.z =
+        // obstacle.bbox.center.orientation.w =
+        obstacle.bbox.size.x = 2.0;
+        obstacle.bbox.size.y = 2.0;
+        obstacle.bbox.size.z = 2.0;
 
-        obstacles_msg.obstacles.push_back(obstacle);
+        rmf_obstacles_msg.obstacles.push_back(obstacle);
     }
 
     auto message = std_msgs::msg::String();
@@ -240,7 +263,7 @@ YoloDetector::Obstacles YoloDetector::cam_coord_to_rmf_obstacle(const vector<int
         // publisher_->publish(message);
     }
 
-    return obstacles_msg;
+    return rmf_obstacles_msg;
 }
 
 void YoloDetector::drawing(const Mat &original_image, Mat &image, const vector<int> &final_class_ids, const vector<float> &final_confidences, const vector<Rect> &final_boxes, const vector<Point> &final_centroids)

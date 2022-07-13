@@ -17,7 +17,7 @@ void HumanDetector::initialize(
   10,
   [data = _data](const sensor_msgs::msg::Image::ConstSharedPtr &msg)
   {
-    // Make detections
+    // perform detections
     auto rmf_obstacles_msg = data->_yoloDetector->imageCallback(msg);
 
     // convert from camera coordinates to world coordinates
