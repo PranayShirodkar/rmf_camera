@@ -54,8 +54,8 @@ private:
     cv::Mat format_yolov5(const cv::Mat &source);
     std::vector<cv::Mat> detect(cv::Mat &input_image);
     Obstacles post_process(const cv::Mat &original_image, cv::Mat &image, std::vector<cv::Mat> &detections);
-    cv::Point2d img_coord_to_cam_coord(const cv::Point &centroid, const cv::Mat &original_image);
-    Obstacles cam_coord_to_rmf_obstacle(const std::vector<int> &final_class_ids, const std::vector<float> &final_confidences, const std::vector<cv::Point2d> &final_obstacles);
+    cv::Point3d img_coord_to_cam_coord(const cv::Point &centroid, const cv::Mat &original_image);
+    Obstacles to_rmf_obstacles(const cv::Mat &original_image, const std::vector<int> &final_class_ids, const std::vector<float> &final_confidences, const std::vector<cv::Rect> &final_boxes, const std::vector<cv::Point> &final_centroids);
     void drawing(const cv::Mat &original_image, cv::Mat &image, const std::vector<int> &final_class_ids, const std::vector<float> &final_confidences, const std::vector<cv::Rect> &final_boxes, const std::vector<cv::Point> &final_centroids);
     void draw_label(cv::Mat &input_image, std::string label, int left, int top);
 

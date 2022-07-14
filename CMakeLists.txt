@@ -88,7 +88,7 @@ install(
 #   rmf_obstacle_ros2
 # )
 
-# ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/env-hooks/${PROJECT_NAME}.dsv.in")
+ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/env-hooks/${PROJECT_NAME}.dsv.in")
 
 # install(TARGETS YoloDetector
 #   DESTINATION lib/${PROJECT_NAME})
