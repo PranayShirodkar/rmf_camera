@@ -52,8 +52,32 @@ HumanDetector::~HumanDetector()
 
 } // rmf_human_detector
 
-#include <pluginlib/class_list_macros.hpp>
+int main(int argc, char **argv)
+{
+  std::cout << "test" << std::endl;
+  return 0;
+  // rclcpp::init(argc, argv);
+  // std::shared_ptr<rclcpp::Node> node = rclcpp::Node::make_shared("image_listener");
 
-PLUGINLIB_EXPORT_CLASS(
-  rmf_human_detector::HumanDetector,
-  rmf_obstacle_ros2::Detector)
+  // cv::namedWindow(OPENCV_WINDOW, cv::WINDOW_AUTOSIZE);
+
+  // net = readNet("/home/osrc/dev_ws/src/rmf_camera/src/yolov5s.onnx");
+  // ifstream ifs("/home/osrc/dev_ws/src/rmf_camera/src/coco.names");
+  // string line;
+  // while (getline(ifs, line))
+  // {
+  //     class_list.push_back(line);
+  // }
+
+  // rclcpp::QoS video_qos(10);
+  // video_qos.keep_last(10);
+  // video_qos.best_effort();
+  // video_qos.durability_volatile();
+  // auto sub = node->create_subscription<sensor_msgs::msg::Image>(
+  //             "depth_camera/image_raw", video_qos, imageCallback);
+
+  // rclcpp::spin(node);
+  // cv::destroyWindow(OPENCV_WINDOW);
+  // rclcpp::shutdown();
+  return 0;
+}
