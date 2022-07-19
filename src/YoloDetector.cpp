@@ -57,7 +57,13 @@ YoloDetector::Obstacles YoloDetector::imageCallback(const sensor_msgs::msg::Imag
 
     // bridge from ROS image type to OpenCV image type
     cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, msg->encoding);
-    Mat original_image = cv_ptr->image;
+    Mat original_image;
+    if (msg->encoding.compare("bgr8") == 0) {
+        original_image = cv_ptr->image;
+    }
+    else if (msg->encoding.compare("rgb8") == 0){
+        cvtColor(cv_ptr->image, original_image, COLOR_RGB2BGR);
+    }
     // Mat original_image = imread("/home/osrc/Pictures/Screenshots/empty_world/test.png");
 
     // format image, forward propagate and post process
