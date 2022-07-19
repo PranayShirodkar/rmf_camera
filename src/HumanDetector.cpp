@@ -13,7 +13,7 @@ void HumanDetector::initialize(
   _data->_cb = std::move(cb);
 
   _data->_sub = _data->_node->create_subscription<sensor_msgs::msg::Image>(
-  "camera/image_rect",
+  "camera1/image_rect",
   10,
   [data = _data](const sensor_msgs::msg::Image::ConstSharedPtr &msg)
   {

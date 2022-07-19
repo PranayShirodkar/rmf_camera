@@ -1,5 +1,6 @@
 <?xml version="1.0" ?>
-<sdf version="1.5">
+<sdf version="1.7"
+      xmlns:experimental="http://sdformat.org/schemas/experimental">
    <world name="default">
       <include>
          <uri>model://ground_plane</uri>
@@ -12,6 +13,24 @@
          <uri>model://CameraRos</uri>
          <pose>0 0 2.5 0 0.3 0</pose>
          <name>camera</name>
+         <!-- <experimental:params>
+            <visual element_id="visual_link::visual" action="modify">
+               <geometry>
+                  <box>
+                     <size>1.0 1.0 1.0</size>
+                  </box>
+               </geometry>
+            </visual>
+            <sensor element_id="visual_link::camera" name="new_name" action="modify"/>
+            <plugin element_id="visual_link::camera::camera_controller" action="modify">
+               <namespace>nstest123</namespace>
+            </plugin>
+            <plugin element_id="visual_link::camera::camera_controller" action="remove"/>
+            <plugin element_id="visual_link::camera" action="add"
+                name="camera_plugin" filename="libgazebo_ros_camera.so">
+               <namespace>nstest123</namespace>
+            </plugin>
+         </experimental:params> -->
       </include>
       <include>
          <uri>model://standing person</uri>
