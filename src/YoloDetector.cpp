@@ -29,8 +29,22 @@ const Scalar BLUE = Scalar(255, 178, 50);
 const Scalar YELLOW = Scalar(0, 255, 255);
 const Scalar RED = Scalar(0,0,255);
 
-YoloDetector::YoloDetector() {
-    cv::namedWindow(OPENCV_WINDOW, cv::WINDOW_AUTOSIZE);
+YoloDetector::YoloDetector(YoloDetector::Config config) : _config(config)
+{
+    // Suppose a standing person model is placed in the scene, unobstructed, such that
+    // the person Bounding Box midpoint and image midpoint coincide.
+    // Then _d_config = real world distance along the floor from camera to standing person
+    const float STANDING_PERSON_SIZE_Z = 1.8;
+    _d_config = (_config.camera_pose_z - STANDING_PERSON_SIZE_Z/2)/tan(_config.camera_pose_p);
+    // CAMERA_TO_HUMAN = real world direct distance from camera to standing person's midpoint
+    const float CAMERA_TO_HUMAN = _d_config/cos(_config.camera_pose_p);
+    // _w_config = width of real world within the image, for this _d_config
+    _w_config = CAMERA_TO_HUMAN*tan(_config.camera_afov/2);
+
+    if (_config.visualize)
+    {
+        cv::namedWindow(_config.camera_topic, cv::WINDOW_AUTOSIZE);
+    }
 
     auto pwd = string(filesystem::current_path());
     auto model_filepath = pwd + "/install/rmf_camera/share/rmf_camera/assets/yolov5s.onnx";
@@ -46,7 +60,10 @@ YoloDetector::YoloDetector() {
 
 YoloDetector::~YoloDetector()
 {
-    cv::destroyWindow(OPENCV_WINDOW);
+    if (_config.visualize)
+    {
+        cv::destroyWindow(_config.camera_topic);
+    }
 }
 
 YoloDetector::Obstacles YoloDetector::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr &msg)
@@ -76,10 +93,7 @@ YoloDetector::Obstacles YoloDetector::imageCallback(const sensor_msgs::msg::Imag
       obstacle.header = msg->header;
     }
 
-    // display
-    imshow(OPENCV_WINDOW, image);
     // imwrite("/home/osrc/Pictures/Screenshots/empty_world/1.jpg", image);
-    waitKey(3);
     return rmf_obstacles;
 }
 
@@ -132,7 +146,7 @@ YoloDetector::Obstacles YoloDetector::post_process(const Mat &original_image, Ma
     {
         float confidence = data[4];
         // Discard bad detections and continue
-        if (confidence >= CONFIDENCE_THRESHOLD)
+        if (confidence >= _config.confidence_threshold)
         {
             float * classes_scores = data + 5;
             // Create a 1x80 Mat and store class scores of 80 classes
@@ -143,7 +157,7 @@ YoloDetector::Obstacles YoloDetector::post_process(const Mat &original_image, Ma
             minMaxLoc(scores, 0, &max_class_score, 0, &class_id);
             // Continue if the class score is above the threshold
             // class_id.x == 0 corresponds to objects labelled "person"
-            if (max_class_score > SCORE_THRESHOLD && class_id.x == 0)
+            if (max_class_score > _config.score_threshold && class_id.x == 0)
             {
                 // Store class ID and confidence in the pre-defined respective vectors
                 confidences.push_back(confidence);
@@ -168,7 +182,7 @@ YoloDetector::Obstacles YoloDetector::post_process(const Mat &original_image, Ma
 
     // Perform Non-Maximum Suppression
     vector<int> indices; // will contain indices of final bounding boxes
-    NMSBoxes(boxes, confidences, SCORE_THRESHOLD, NMS_THRESHOLD, indices);
+    NMSBoxes(boxes, confidences, _config.score_threshold, _config.nms_threshold, indices);
 
     // use indices vector to get the final vectors
     vector<int> final_class_ids;
@@ -184,7 +198,10 @@ YoloDetector::Obstacles YoloDetector::post_process(const Mat &original_image, Ma
     }
 
     // draw to image
-    drawing(original_image, image, final_class_ids, final_confidences, final_boxes, final_centroids);
+    if (_config.visualize)
+    {
+        drawing(original_image, image, final_class_ids, final_confidences, final_boxes, final_centroids);
+    }
 
     // generate rmf_obstacles
     auto rmf_obstacles = to_rmf_obstacles(original_image, final_class_ids, final_confidences, final_boxes, final_centroids);
@@ -250,12 +267,12 @@ Point3d YoloDetector::img_coord_to_cam_coord(const Point &centroid, const Mat &o
     // img coordinates are pixel x & y position in the frame, px, py
     // camera coordinates are in bird's eye view (top down), with origin at camera, cx, cy
     // cx is +ve toward front of camera, cy is +ve toward left of camera
-    const float WIDTH_PER_PIXEL_M = W_config*2/original_image.cols;
-    const float DEPTH_PER_PIXEL_M = D_config*2/original_image.rows;
+    const float WIDTH_PER_PIXEL_M = _w_config*2/original_image.cols;
+    const float DEPTH_PER_PIXEL_M = _d_config*2/original_image.rows;
     float px = centroid.x;
     float py = centroid.y;
     float factor =  py/(original_image.rows/2);
-    // float pitch_factor = (25/CAMERA_PITCH);
+    // float pitch_factor = (25/_config.camera_pose_p);
     float depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M;
     if (factor > 1) {
         depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*factor;
@@ -264,10 +281,10 @@ Point3d YoloDetector::img_coord_to_cam_coord(const Point &centroid, const Mat &o
         depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*(((1 - factor)*100));
         // depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*(((1 - factor)*pitch_factor));
     }
-    float cx = D_config + (depth_per_pixel_m_dynamic * ((original_image.rows/2) - py));
+    float cx = _d_config + (depth_per_pixel_m_dynamic * ((original_image.rows/2) - py));
     if (cx < 0) cx = 0.1;
 
-    float width_per_pixel_m_dynamic = WIDTH_PER_PIXEL_M * cx / D_config;
+    float width_per_pixel_m_dynamic = WIDTH_PER_PIXEL_M * cx / _d_config;
     float cy = width_per_pixel_m_dynamic * ((original_image.cols/2) - px);
     return Point3d(cx, cy, 0.0);
 }
@@ -306,6 +323,10 @@ void YoloDetector::drawing(const Mat &original_image, Mat &image, const vector<i
 
     // Draw image center
     circle(image, Point(original_image.cols/2, original_image.rows/2), 2, CV_RGB(255,255,0), -1);
+
+    // display
+    imshow(_config.camera_topic, image);
+    waitKey(3);
 }
 
 void YoloDetector::draw_label(Mat &input_image, string label, int left, int top)

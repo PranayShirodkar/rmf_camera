@@ -27,32 +27,19 @@ def generate_launch_description():
         package='ros_ign_bridge',
         executable='parameter_bridge',
         arguments=[
-            '/world/camera_sensor/pose/info@tf2_msgs/msg/TFMessage@ignition.msgs.Pose_V',
-            ],
-        output='screen',
-    )
-    bridge1 = Node(
-        package='ros_ign_bridge',
-        executable='parameter_bridge',
-        arguments=[
+            '/model/camera1/pose@tf2_msgs/msg/TFMessage@ignition.msgs.Pose_V',
             '/world/camera_sensor/model/camera1/link/visual_link/sensor/camera/image@sensor_msgs/msg/Image@ignition.msgs.Image',
-            '/world/camera_sensor/model/camera1/link/visual_link/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo@ignition.msgs.CameraInfo'
+            '/world/camera_sensor/model/camera1/link/visual_link/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo@ignition.msgs.CameraInfo',
+            '/model/camera2/pose@tf2_msgs/msg/TFMessage@ignition.msgs.Pose_V',
+            '/world/camera_sensor/model/camera2/link/visual_link/sensor/camera/image@sensor_msgs/msg/Image@ignition.msgs.Image',
+            '/world/camera_sensor/model/camera2/link/visual_link/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo@ignition.msgs.CameraInfo',
             ],
         output='screen',
         remappings=[
+            ('/model/camera1/pose', '/camera1/pose'),
             ('/world/camera_sensor/model/camera1/link/visual_link/sensor/camera/image', '/camera1/image_raw'),
             ('/world/camera_sensor/model/camera1/link/visual_link/sensor/camera/camera_info', '/camera1/camera_info'),
-        ]
-    )
-    bridge2 = Node(
-        package='ros_ign_bridge',
-        executable='parameter_bridge',
-        arguments=[
-            '/world/camera_sensor/model/camera2/link/visual_link/sensor/camera/image@sensor_msgs/msg/Image@ignition.msgs.Image',
-            '/world/camera_sensor/model/camera2/link/visual_link/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo@ignition.msgs.CameraInfo'
-            ],
-        output='screen',
-        remappings=[
+            ('/model/camera2/pose', '/camera2/pose'),
             ('/world/camera_sensor/model/camera2/link/visual_link/sensor/camera/image', '/camera2/image_raw'),
             ('/world/camera_sensor/model/camera2/link/visual_link/sensor/camera/camera_info', '/camera2/camera_info'),
         ]
@@ -62,6 +49,13 @@ def generate_launch_description():
            package='rmf_camera',
            executable='YoloDetector'
         ),
+        # Node(
+        #    package='rmf_camera',
+        #    executable='YoloDetector',
+        #    parameters=[
+        #         {"camera_topic": "/camera2/image_rect"}
+        #    ]
+        # ),
         Node(
             package='image_proc',
             namespace='/camera1',
@@ -80,6 +74,4 @@ def generate_launch_description():
         ),
         ign_gazebo,
         bridge,
-        bridge1,
-        bridge2,
     ])

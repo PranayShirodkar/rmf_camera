@@ -16,7 +16,6 @@
       filename="ignition-gazebo-sensors-system"
       name="ignition::gazebo::systems::Sensors">
       <render_engine>ogre</render_engine>
-      <namespace>ns</namespace>
     </plugin>
     <plugin
       filename="ignition-gazebo-user-commands-system"

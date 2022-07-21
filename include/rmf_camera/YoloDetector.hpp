@@ -20,28 +20,30 @@ class YoloDetector
 public:
     using Obstacles = rmf_obstacle_msgs::msg::Obstacles;
 
-    YoloDetector();
+    // User Configurations
+    struct Config
+    {
+        // Camera configurations
+        std::string camera_topic;
+        const float camera_afov;
+        const float camera_pose_z;
+        const float camera_pose_p;
+        // YoloDetector configurations
+        const float score_threshold;
+        const float nms_threshold;
+        const float confidence_threshold;
+        const bool visualize = true;
+    };
+
+    YoloDetector(Config config);
     ~YoloDetector();
     Obstacles imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr &msg);
 
 private:
 
-    // Constants
-    const std::string OPENCV_WINDOW = "Image window";
+    // Yolov5s Constants
     const float INPUT_WIDTH = 640.0;
     const float INPUT_HEIGHT = 640.0;
-
-    // Threshold Configurations
-    const float SCORE_THRESHOLD = 0.45;
-    const float NMS_THRESHOLD = 0.45;
-    const float CONFIDENCE_THRESHOLD = 0.25;
-
-    // Camera Configurations
-    const float D_config = 5.28; // STANDING_PERSON_X
-    const float CAMERA_AFOV = 2;
-    const float CAMERA_PITCH = 0.3;
-    const float CAMERA_TO_HUMAN = D_config/cos(CAMERA_PITCH); // real world distance from camera to center of human bounding box
-    const float W_config = CAMERA_TO_HUMAN*tan(CAMERA_AFOV/2); // width of real world at depth of human bounding box
 
     // Members
     // image_transport::ImageTransport it;
@@ -49,6 +51,9 @@ private:
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
     std::vector<std::string> class_list_;
     cv::dnn::Net net_;
+    Config _config;
+    float _d_config;
+    float _w_config;
 
     // Methods
     cv::Mat format_yolov5(const cv::Mat &source);

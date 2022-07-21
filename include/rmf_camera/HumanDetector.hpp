@@ -12,7 +12,6 @@ class HumanDetector
 {
 public:
   using Obstacles = rmf_obstacle_msgs::msg::Obstacles;
-  void initialize();
   HumanDetector();
   ~HumanDetector();
 
@@ -30,12 +29,11 @@ private:
       _obstacleManager = rmf_obstacle_ros2::ObstacleManager::make("human_detector");
       _node = _obstacleManager->node();
       _thread = std::thread(
-        [n = _node]()
+        []()
         {
           while(rclcpp::ok()) {}
         }
       );
-      _yoloDetector = std::make_shared<YoloDetector>();
     }
   };
   std::shared_ptr<Data> _data;
