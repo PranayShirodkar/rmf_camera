@@ -1,6 +1,0 @@
-<library path="rmf_human_detector">
-  <class type="rmf_human_detector::HumanDetector"
-         base_class_type="rmf_obstacle_ros2::Detector">
-    <description>Detect humans using a Gazebo camera</description>
-  </class>
-</library>

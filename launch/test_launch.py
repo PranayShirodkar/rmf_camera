@@ -58,18 +58,9 @@ def generate_launch_description():
         ]
     )
     return LaunchDescription([
-        # Node(
-        #     package='rmf_camera',
-        #     executable='YoloDetector'
-        # ),
         Node(
-            package='rmf_obstacle_ros2',
-            executable='obstacle_manager_node',
-            output='screen',
-            emulate_tty=True,
-            parameters=[
-                {"detector_plugin": "rmf_human_detector::HumanDetector"}
-            ]
+           package='rmf_camera',
+           executable='YoloDetector'
         ),
         Node(
             package='image_proc',
