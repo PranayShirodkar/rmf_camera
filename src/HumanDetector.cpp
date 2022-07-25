@@ -75,6 +75,8 @@ YoloDetector::Config HumanDetector::get_config()
   YoloDetector::Config config = {
                 camera_name,
                 fov_x,
+                static_cast<float>(camera_pose.transforms[1].transform.translation.x),
+                static_cast<float>(camera_pose.transforms[1].transform.translation.y),
                 static_cast<float>(camera_pose.transforms[1].transform.translation.z),
                 static_cast<float>(pitch),
                 score_threshold,

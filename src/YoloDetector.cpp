@@ -217,7 +217,9 @@ YoloDetector::Obstacles YoloDetector::to_rmf_obstacles(const Mat &original_image
     // prepare obstacle_msg objects and add to rmf_obstacles
     rmf_obstacles.obstacles.reserve(final_centroids.size());
     for (size_t i = 0; i < final_centroids.size(); i++) {
-        Point3d obstacle = img_coord_to_cam_coord(final_centroids[i], original_image);
+        Point3d obst_cam_coord = img_coord_to_cam_coord(final_centroids[i], original_image);
+        Point3d obstacle = cam_coord_to_world_coord(obst_cam_coord);
+
         auto rmf_obstacle = rmf_obstacle_msgs::msg::Obstacle();
         // auto obstacle2 = rmf_obstacle_msgs::build<rmf_obstacle_msgs::msg::Obstacle>()
         // .header()
@@ -245,20 +247,6 @@ YoloDetector::Obstacles YoloDetector::to_rmf_obstacles(const Mat &original_image
 
         rmf_obstacles.obstacles.push_back(rmf_obstacle);
     }
-
-    // auto message = std_msgs::msg::String();
-    // for (size_t i = 0; i < final_obstacles.size(); i++) {
-    //     string class_label = class_list_[final_class_ids[i]];
-    //     BoundingBox3D bb = {
-    //         class_label,  // classification
-    //         static_cast<int>(i),  // id
-    //         Point3d(final_obstacles[i].x, final_obstacles[i].y, 0.0),  // position
-    //         Vec3d(1.0, 1.0, 2.0),  // size
-    //     };
-    //     message.data = bb.toString();
-        // RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
-        // publisher_->publish(message);
-    // }
 
     return rmf_obstacles;
 }
@@ -288,6 +276,15 @@ Point3d YoloDetector::img_coord_to_cam_coord(const Point &centroid, const Mat &o
     float width_per_pixel_m_dynamic = WIDTH_PER_PIXEL_M * cx / _d_config;
     float cy = width_per_pixel_m_dynamic * ((original_image.cols/2) - px);
     return Point3d(cx, cy, 0.0);
+}
+
+Point3d YoloDetector::cam_coord_to_world_coord(const Point3d &obst_cam_coord)
+{
+    // obst in cam coord + camera in world coord = obst in world coord
+    auto x = obst_cam_coord.x + _config.camera_pose_x;
+    auto y = obst_cam_coord.y + _config.camera_pose_y;
+    auto z = obst_cam_coord.z;
+    return Point3d(x, y, z);
 }
 
 void YoloDetector::drawing(const Mat &original_image, Mat &image, const vector<int> &final_class_ids, const vector<float> &final_confidences, const vector<Rect> &final_boxes, const vector<Point> &final_centroids)
