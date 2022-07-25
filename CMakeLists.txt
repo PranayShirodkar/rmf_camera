@@ -11,6 +11,8 @@ include(GNUInstallDirs)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_msgs REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(common_interfaces REQUIRED)
 find_package(cv_bridge REQUIRED)
@@ -30,6 +32,8 @@ ament_target_dependencies(
   YoloDetector
   rclcpp
   sensor_msgs
+  tf2
+  tf2_msgs
   cv_bridge
   OpenCV
   rmf_obstacle_ros2

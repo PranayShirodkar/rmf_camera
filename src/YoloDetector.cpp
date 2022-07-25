@@ -43,7 +43,8 @@ YoloDetector::YoloDetector(YoloDetector::Config config) : _config(config)
 
     if (_config.visualize)
     {
-        cv::namedWindow(_config.camera_topic, cv::WINDOW_AUTOSIZE);
+        _config.camera_name += "/detections";
+        cv::namedWindow(_config.camera_name, cv::WINDOW_AUTOSIZE);
     }
 
     auto pwd = string(filesystem::current_path());
@@ -62,7 +63,7 @@ YoloDetector::~YoloDetector()
 {
     if (_config.visualize)
     {
-        cv::destroyWindow(_config.camera_topic);
+        cv::destroyWindow(_config.camera_name);
     }
 }
 
@@ -325,7 +326,7 @@ void YoloDetector::drawing(const Mat &original_image, Mat &image, const vector<i
     circle(image, Point(original_image.cols/2, original_image.rows/2), 2, CV_RGB(255,255,0), -1);
 
     // display
-    imshow(_config.camera_topic, image);
+    imshow(_config.camera_name, image);
     waitKey(3);
 }
 

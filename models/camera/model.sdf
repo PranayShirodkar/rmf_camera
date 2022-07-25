@@ -22,6 +22,16 @@
             <height>1280</height>
             <format>R8G8B8</format>
           </image>
+          <lens>
+            <intrinsics>
+              <!-- it is up to the user to ensure that:
+              horizontal_fov = 2 * atan2( width, (2*fx) ) -->
+              <fx>513.67409</fx>
+              <fy>513.67409</fy>
+              <cx>800</cx>
+              <cy>640</cy>
+            </intrinsics>
+          </lens>
           <clip>
             <near>0.1</near>
             <far>100</far>

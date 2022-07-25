@@ -24,7 +24,7 @@ public:
     struct Config
     {
         // Camera configurations
-        std::string camera_topic;
+        std::string camera_name;
         const float camera_afov;
         const float camera_pose_z;
         const float camera_pose_p;
