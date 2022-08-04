@@ -232,6 +232,8 @@ YoloDetector::Obstacles YoloDetector::to_rmf_obstacles(const Mat &original_image
         // .lifetime()
         // .action();
         rmf_obstacle.id = final_class_ids[i];
+        rmf_obstacle.source = _config.camera_name;
+        rmf_obstacle.level_name = "L1";
         rmf_obstacle.classification = class_list_[final_class_ids[i]];
         rmf_obstacle.bbox.center.position.x = obstacle.x;
         rmf_obstacle.bbox.center.position.y = obstacle.y;
