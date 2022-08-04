@@ -28,20 +28,20 @@ def generate_launch_description():
         executable='parameter_bridge',
         arguments=[
             '/model/camera1/pose@tf2_msgs/msg/TFMessage@ignition.msgs.Pose_V',
-            '/world/camera_sensor/model/camera1/link/visual_link/sensor/camera/image@sensor_msgs/msg/Image@ignition.msgs.Image',
-            '/world/camera_sensor/model/camera1/link/visual_link/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo@ignition.msgs.CameraInfo',
-            '/model/camera2/pose@tf2_msgs/msg/TFMessage@ignition.msgs.Pose_V',
-            '/world/camera_sensor/model/camera2/link/visual_link/sensor/camera/image@sensor_msgs/msg/Image@ignition.msgs.Image',
-            '/world/camera_sensor/model/camera2/link/visual_link/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo@ignition.msgs.CameraInfo',
+            '/world/sim_world/model/camera1/link/visual_link/sensor/camera/image@sensor_msgs/msg/Image@ignition.msgs.Image',
+            '/world/sim_world/model/camera1/link/visual_link/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo@ignition.msgs.CameraInfo',
+            # '/model/camera2/pose@tf2_msgs/msg/TFMessage@ignition.msgs.Pose_V',
+            # '/world/sim_world/model/camera2/link/visual_link/sensor/camera/image@sensor_msgs/msg/Image@ignition.msgs.Image',
+            # '/world/sim_world/model/camera2/link/visual_link/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo@ignition.msgs.CameraInfo',
             ],
         output='screen',
         remappings=[
             ('/model/camera1/pose', '/camera1/pose'),
-            ('/world/camera_sensor/model/camera1/link/visual_link/sensor/camera/image', '/camera1/image_raw'),
-            ('/world/camera_sensor/model/camera1/link/visual_link/sensor/camera/camera_info', '/camera1/camera_info'),
-            ('/model/camera2/pose', '/camera2/pose'),
-            ('/world/camera_sensor/model/camera2/link/visual_link/sensor/camera/image', '/camera2/image_raw'),
-            ('/world/camera_sensor/model/camera2/link/visual_link/sensor/camera/camera_info', '/camera2/camera_info'),
+            ('/world/sim_world/model/camera1/link/visual_link/sensor/camera/image', '/camera1/image_raw'),
+            ('/world/sim_world/model/camera1/link/visual_link/sensor/camera/camera_info', '/camera1/camera_info'),
+            # ('/model/camera2/pose', '/camera2/pose'),
+            # ('/world/sim_world/model/camera2/link/visual_link/sensor/camera/image', '/camera2/image_raw'),
+            # ('/world/sim_world/model/camera2/link/visual_link/sensor/camera/camera_info', '/camera2/camera_info'),
         ]
     )
     return LaunchDescription([
@@ -64,14 +64,14 @@ def generate_launch_description():
                 ('image', 'image_raw'),
             ]
         ),
-        Node(
-            package='image_proc',
-            namespace='/camera2',
-            executable='image_proc',
-            remappings=[
-                ('image', 'image_raw'),
-            ]
-        ),
+        # Node(
+        #     package='image_proc',
+        #     namespace='/camera2',
+        #     executable='image_proc',
+        #     remappings=[
+        #         ('image', 'image_raw'),
+        #     ]
+        # ),
         ign_gazebo,
         bridge,
     ])

@@ -10,7 +10,6 @@
 
 // Project includes
 #include <rmf_camera/YoloDetector.hpp>
-#include <rmf_camera/BoundingBox3D.hpp>
 #include <rmf_obstacle_msgs/msg/obstacles.hpp>
 
 // Namespaces
