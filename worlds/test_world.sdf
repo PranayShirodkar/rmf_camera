@@ -195,12 +195,12 @@
     </model>
 
     <include>
-        <uri>model://camera</uri>
+        <uri>model://CameraRos</uri>
         <pose>0 0 2.5 0 0.3 0</pose>
         <name>camera1</name>
     </include>
     <include>
-        <uri>model://camera</uri>
+        <uri>model://CameraRos</uri>
         <pose>0 3 2.5 0 0.3 0</pose>
         <name>camera2</name>
     </include>
