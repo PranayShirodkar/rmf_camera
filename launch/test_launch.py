@@ -53,7 +53,7 @@ def generate_launch_description():
         #    package='rmf_camera',
         #    executable='YoloDetector',
         #    parameters=[
-        #         {"camera_name": "/camera2"}
+        #         {"camera_name": "camera2"}
         #    ]
         # ),
         Node(

@@ -20,16 +20,20 @@ HumanDetector::HumanDetector() : Node("human_detector"), _data(std::make_shared<
   _data->_sub = this->create_subscription<sensor_msgs::msg::Image>(
   camera_image_topic,
   10,
-  [data = _data](const sensor_msgs::msg::Image::ConstSharedPtr &msg)
+  [=](const sensor_msgs::msg::Image::ConstSharedPtr &msg)
   {
     // perform detections
-    auto rmf_obstacles_msg = data->_yoloDetector->imageCallback(msg);
+    auto rmf_obstacles_msg = _data->_yoloDetector->imageCallback(msg);
 
     // convert from camera coordinates to world coordinates
     // populate other fields like time stamp, etc
+    for (auto &obstacle : rmf_obstacles_msg.obstacles)
+    {
+      obstacle.header.stamp = this->get_clock()->now();
+    }
 
     // publish rmf_obstacles_msg
-    data->_pub->publish(rmf_obstacles_msg);
+    _data->_pub->publish(rmf_obstacles_msg);
   });
 }
 
@@ -37,7 +41,7 @@ YoloDetector::Config HumanDetector::get_config()
 {
   // get ros2 params
   const std::string camera_name = this->declare_parameter(
-    "camera_name", "/camera1");
+    "camera_name", "camera1");
   const float score_threshold = this->declare_parameter(
     "score_threshold", 0.45);
   const float nms_threshold = this->declare_parameter(
@@ -48,8 +52,8 @@ YoloDetector::Config HumanDetector::get_config()
     "visualize", true);
 
   // get one camera_info and one pose msg
-  const std::string camera_info_topic = camera_name + "/camera_info";
-  const std::string camera_pose_topic = camera_name + "/pose";
+  const std::string camera_info_topic = "/" + camera_name + "/camera_info";
+  const std::string camera_pose_topic = "/" + camera_name + "/pose";
 
   std::shared_ptr<rclcpp::Node> temp_node = std::make_shared<rclcpp::Node>("wait_for_msg_node");
   sensor_msgs::msg::CameraInfo camera_info;

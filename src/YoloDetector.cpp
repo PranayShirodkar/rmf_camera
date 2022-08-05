@@ -42,7 +42,6 @@ YoloDetector::YoloDetector(YoloDetector::Config config) : _config(config)
 
     if (_config.visualize)
     {
-        _config.camera_name += "/detections";
         cv::namedWindow(_config.camera_name, cv::WINDOW_AUTOSIZE);
     }
 
@@ -87,11 +86,6 @@ YoloDetector::Obstacles YoloDetector::imageCallback(const sensor_msgs::msg::Imag
     Mat image = format_yolov5(original_image);
     vector<Mat> detections = detect(image);
     Obstacles rmf_obstacles = post_process(original_image, image, detections);
-
-    for (auto &obstacle : rmf_obstacles.obstacles)
-    {
-      obstacle.header = msg->header;
-    }
 
     // imwrite("/home/osrc/Pictures/Screenshots/empty_world/1.jpg", image);
     return rmf_obstacles;
@@ -231,7 +225,8 @@ YoloDetector::Obstacles YoloDetector::to_rmf_obstacles(const Mat &original_image
         // .data()
         // .lifetime()
         // .action();
-        rmf_obstacle.id = final_class_ids[i];
+        rmf_obstacle.header.frame_id = _config.camera_name + "/obstacle";
+        rmf_obstacle.id = i;
         rmf_obstacle.source = _config.camera_name;
         rmf_obstacle.level_name = "L1";
         rmf_obstacle.classification = class_list_[final_class_ids[i]];
@@ -245,6 +240,7 @@ YoloDetector::Obstacles YoloDetector::to_rmf_obstacles(const Mat &original_image
         rmf_obstacle.bbox.size.x = 2.0;
         rmf_obstacle.bbox.size.y = 2.0;
         rmf_obstacle.bbox.size.z = 2.0;
+        rmf_obstacle.lifetime.sec = 10;
 
         rmf_obstacles.obstacles.push_back(rmf_obstacle);
     }
