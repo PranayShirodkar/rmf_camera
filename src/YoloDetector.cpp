@@ -12,6 +12,16 @@
 #include <rmf_camera/YoloDetector.hpp>
 #include <rmf_obstacle_msgs/msg/obstacles.hpp>
 
+#include <rmf_obstacle_msgs/msg/obstacle.hpp>
+#include <rmf_obstacle_msgs/msg/bounding_box3_d.hpp>
+#include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/quaternion.hpp>
+#include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/vector3.hpp>
+#include <std_msgs/msg/header.hpp>
+#include <builtin_interfaces/msg/time.hpp>
+#include <builtin_interfaces/msg/duration.hpp>
+
 // Namespaces
 using namespace cv;
 using namespace std;
@@ -215,16 +225,37 @@ YoloDetector::Obstacles YoloDetector::to_rmf_obstacles(const Mat &original_image
 
         auto rmf_obstacle = rmf_obstacle_msgs::msg::Obstacle();
         // auto obstacle2 = rmf_obstacle_msgs::build<rmf_obstacle_msgs::msg::Obstacle>()
-        // .header()
-        // .id()
-        // .source()
-        // .level_name()
-        // .classification()
-        // .bbox()
-        // .data_resolution()
-        // .data()
-        // .lifetime()
-        // .action();
+        //     .header(std_msgs::build<std_msgs::msg::Header>()
+        //         .stamp(builtin_interfaces::build<builtin_interfaces::msg::Time>()
+        //             .sec(0)
+        //             .nanosec(0))
+        //         .frame_id(_config.camera_name + "/obstacle"))
+        //     .id(i)
+        //     .source(_config.camera_name)
+        //     .level_name("L1")
+        //     .classification(class_list_[final_class_ids[i]])
+        //     .bbox(rmf_obstacle_msgs::build<rmf_obstacle_msgs::msg::BoundingBox3D>()
+        //         .center(geometry_msgs::build<geometry_msgs::msg::Pose>()
+        //             .position(geometry_msgs::build<geometry_msgs::msg::Point>()
+        //                 .x(obstacle.x)
+        //                 .y(obstacle.y)
+        //                 .z(obstacle.z))
+        //             .orientation(geometry_msgs::build<geometry_msgs::msg::Quaternion>()
+        //                 .x(0.0)
+        //                 .y(0.0)
+        //                 .z(0.0)
+        //                 .w(1.0)))
+        //         .size(geometry_msgs::build<geometry_msgs::msg::Vector3>()
+        //             .x(2.0)
+        //             .y(2.0)
+        //             .z(2.0)))
+        //     .data_resolution(0);
+        // The next field of the msg building has not worked
+        //     .data()
+        //     .lifetime(builtin_interfaces::build<builtin_interfaces::msg::Duration>()
+        //         .sec(10)
+        //         .nanosec(0))
+        //     .action(rmf_obstacle_msgs::msg::Obstacle::ACTION_ADD);
         rmf_obstacle.header.frame_id = _config.camera_name + "/obstacle";
         rmf_obstacle.id = i;
         rmf_obstacle.source = _config.camera_name;
@@ -241,6 +272,7 @@ YoloDetector::Obstacles YoloDetector::to_rmf_obstacles(const Mat &original_image
         rmf_obstacle.bbox.size.y = 2.0;
         rmf_obstacle.bbox.size.z = 2.0;
         rmf_obstacle.lifetime.sec = 10;
+        // rmf_obstacle.action = rmf_obstacle_msgs::msg::Obstacle::ACTION_ADD;
 
         rmf_obstacles.obstacles.push_back(rmf_obstacle);
     }
