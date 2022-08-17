@@ -18,18 +18,20 @@
         <camera>
           <horizontal_fov>2</horizontal_fov>
           <image>
-            <width>1600</width>
-            <height>1280</height>
+            <width>640</width>
+            <height>480</height>
             <format>R8G8B8</format>
           </image>
           <lens>
             <intrinsics>
               <!-- it is up to the user to ensure that:
-              horizontal_fov = 2 * atan2( width, (2*fx) ) -->
-              <fx>513.67409</fx>
-              <fy>513.67409</fy>
-              <cx>800</cx>
-              <cy>640</cy>
+              horizontal_fov = 2 * atan2( width, (2*fx) )
+              width = cx * 2
+              height = cy * 2 -->
+              <fx>205.4696</fx>
+              <fy>205.4696</fy>
+              <cx>320</cx>
+              <cy>240</cy>
             </intrinsics>
           </lens>
           <clip>

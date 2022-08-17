@@ -20,6 +20,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             os.path.join(pkg_ros_ign_gazebo, 'launch', 'ign_gazebo.launch.py')),
         launch_arguments={'ign_args': '-r install/rmf_camera/share/rmf_camera/worlds/test_world.sdf'}.items(),
+        # launch_arguments={'ign_args': '-s --headless-rendering -r install/rmf_camera/share/rmf_camera/worlds/test_world.sdf'}.items(),
     )
 
     # Bridge
@@ -47,15 +48,32 @@ def generate_launch_description():
     return LaunchDescription([
         Node(
            package='rmf_camera',
-           executable='YoloDetector'
+           executable='YoloDetector',
+           parameters=[
+                {"camera_name": "camera1"}
+           ]
         ),
-        # Node(
-        #    package='rmf_camera',
-        #    executable='YoloDetector',
-        #    parameters=[
-        #         {"camera_name": "camera2"}
-        #    ]
-        # ),
+        Node(
+           package='rmf_obstacle_ros2',
+           executable='lane_blocker_node',
+           parameters=[{
+                "lane_closure_threshold": 5,
+           }]
+        ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            arguments = [
+                '--frame-id', 'map',
+                '--child-frame-id', 'camera1',
+                '--x', '0',
+                '--y', '0',
+                '--z', '0',
+                '--roll', '0',
+                '--pitch', '0',
+                '--yaw', '0',
+                ]
+        ),
         Node(
             package='image_proc',
             namespace='/camera1',
@@ -64,14 +82,6 @@ def generate_launch_description():
                 ('image', 'image_raw'),
             ]
         ),
-        # Node(
-        #     package='image_proc',
-        #     namespace='/camera2',
-        #     executable='image_proc',
-        #     remappings=[
-        #         ('image', 'image_raw'),
-        #     ]
-        # ),
-        ign_gazebo,
+        # ign_gazebo,
         bridge,
     ])
