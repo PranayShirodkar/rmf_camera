@@ -57,7 +57,10 @@ def generate_launch_description():
            package='rmf_obstacle_ros2',
            executable='lane_blocker_node',
            parameters=[{
-                "lane_closure_threshold": 5,
+                "lane_closure_threshold": 4,
+                "speed_limit_threshold": 2,
+                "obstacle_lane_threshold": 0.0,
+                "continuous_checker": True,
            }]
         ),
         Node(
