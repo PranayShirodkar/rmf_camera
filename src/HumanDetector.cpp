@@ -2,7 +2,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <sensor_msgs/msg/camera_info.hpp>
-#include <rmf_camera/HumanDetector.hpp>
+#include <rmf_human_detector/HumanDetector.hpp>
 
 HumanDetector::HumanDetector() : Node("human_detector"), _data(std::make_shared<Data>())
 {

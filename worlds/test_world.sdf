@@ -200,17 +200,12 @@
         <name>camera1</name>
     </include>
     <include>
-        <uri>model://CameraRos</uri>
-        <pose>0 3 2.5 0 0.3 0</pose>
-        <name>camera2</name>
-    </include>
-    <include>
         <uri>model://standing person</uri>
         <pose>5.28 -0.015 0 0 0 -1.5708</pose>
     </include>
     <include>
         <uri>model://visitorkidsit</uri>
-        <pose>6.7 -0.01 0 0 0 -1.5708</pose>
+        <pose>6.7 -2 0 0 0 -1.5708</pose>
     </include>
 
   </world>

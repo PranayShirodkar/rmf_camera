@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(rmf_camera)
+project(rmf_human_detector)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -12,38 +12,36 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
-find_package(tf2_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
-find_package(image_transport REQUIRED)
-find_package(common_interfaces REQUIRED)
+find_package(tf2_msgs REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(rmf_obstacle_ros2 REQUIRED)
+find_package(rmf_obstacle_msgs REQUIRED)
 
 #=============================================================
 
-add_executable(YoloDetector src/HumanDetector.cpp src/YoloDetector.cpp)
+add_executable(human_detector src/HumanDetector.cpp src/YoloDetector.cpp)
 
-target_include_directories(YoloDetector PUBLIC
+target_include_directories(human_detector PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(YoloDetector PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(human_detector PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 ament_target_dependencies(
-  YoloDetector
+  human_detector
   rclcpp
   sensor_msgs
   tf2
-  tf2_msgs
   tf2_ros
+  tf2_msgs
+  tf2_geometry_msgs
   cv_bridge
   OpenCV
-  rmf_obstacle_ros2
+  rmf_obstacle_msgs
 )
 
-ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/env-hooks/${PROJECT_NAME}.dsv.in")
-
-install(TARGETS YoloDetector
+install(TARGETS human_detector
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY

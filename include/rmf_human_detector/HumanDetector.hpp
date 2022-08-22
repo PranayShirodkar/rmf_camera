@@ -5,7 +5,7 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <tf2_msgs/msg/tf_message.hpp>
 #include <rmf_obstacle_msgs/msg/obstacles.hpp>
-#include <rmf_camera/YoloDetector.hpp>
+#include <rmf_human_detector/YoloDetector.hpp>
 
 class HumanDetector : public rclcpp::Node
 {

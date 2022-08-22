@@ -9,13 +9,6 @@ from ament_index_python.packages import get_package_share_directory
 import os
 
 def generate_launch_description():
-    pkg_ros_ign_gazebo = get_package_share_directory('ros_ign_gazebo')
-    ign_gazebo = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_ros_ign_gazebo, 'launch', 'ign_gazebo.launch.py')),
-        launch_arguments={'ign_args': '-r install/rmf_human_detector/share/rmf_human_detector/worlds/test_world.sdf'}.items(),
-    )
-
     # Bridge
     bridge = Node(
         package='ros_ign_bridge',
@@ -62,6 +55,15 @@ def generate_launch_description():
                 '--yaw', '0',
                 ]
         ),
-        ign_gazebo,
+        # Node(
+        #    package='rmf_obstacle_ros2',
+        #    executable='lane_blocker_node',
+        #    parameters=[{
+        #         "lane_closure_threshold": 4,
+        #         "speed_limit_threshold": 2,
+        #         "obstacle_lane_threshold": 0.0,
+        #         "continuous_checker": True,
+        #    }]
+        # ),
         bridge,
     ])

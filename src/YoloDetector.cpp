@@ -19,14 +19,14 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2_ros/buffer.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 // OpenCV includes
 #include <cv_bridge/cv_bridge.h>
 
 // Project includes
 #include <rmf_obstacle_msgs/msg/bounding_box3_d.hpp>
-#include <rmf_utils/catch.hpp>
-#include <rmf_camera/YoloDetector.hpp>
+#include <rmf_human_detector/YoloDetector.hpp>
 
 // Namespaces
 using namespace cv;
@@ -54,9 +54,9 @@ YoloDetector::YoloDetector(std::shared_ptr<Config> config) : _config(config)
     }
 
     auto pwd = string(filesystem::current_path());
-    auto model_filepath = pwd + "/install/rmf_camera/share/rmf_camera/assets/yolov5s.onnx";
+    auto model_filepath = pwd + "/install/rmf_human_detector/share/rmf_human_detector/assets/yolov5s.onnx";
     _net = readNet(model_filepath);
-    auto labels_filepath = pwd + "/install/rmf_camera/share/rmf_camera/assets/coco.names";
+    auto labels_filepath = pwd + "/install/rmf_human_detector/share/rmf_human_detector/assets/coco.names";
     ifstream ifs(labels_filepath);
     string line;
     while (getline(ifs, line))
@@ -75,10 +75,6 @@ YoloDetector::~YoloDetector()
 
 YoloDetector::Obstacles YoloDetector::image_cb(const sensor_msgs::msg::Image::ConstSharedPtr &msg)
 {
-    // printf("Image received \tSize: %dx%d - Timestamp: %u.%u sec - Encoding: %s\n",
-    //                 msg->width, msg->height,
-    //                 msg->header.stamp.sec,msg->header.stamp.nanosec, msg->encoding.c_str());
-
     // bridge from ROS image type to OpenCV image type
     cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, msg->encoding);
     Mat original_image;
@@ -90,14 +86,12 @@ YoloDetector::Obstacles YoloDetector::image_cb(const sensor_msgs::msg::Image::Co
     {
         cvtColor(cv_ptr->image, original_image, COLOR_RGB2BGR);
     }
-    // Mat original_image = imread("/home/osrc/Pictures/Screenshots/empty_world/test.png");
 
     // format image, forward propagate and post process
     Mat image = format_yolov5(original_image);
     vector<Mat> detections = detect(image);
     Obstacles rmf_obstacles = post_process(original_image, image, detections);
 
-    // imwrite("/home/osrc/Pictures/Screenshots/empty_world/1.jpg", image);
     return rmf_obstacles;
 }
 
@@ -129,17 +123,24 @@ void YoloDetector::calibrate()
     double roll, pitch, yaw;
     m.getRPY(roll, pitch, yaw);
 
-    // Suppose a standing person model is placed in the scene, unobstructed, such that
-    // the person Bounding Box midpoint and image midpoint coincide.
-    // Then _d_param = real world distance along the floor from camera to standing person
-    const float STANDING_PERSON_SIZE_Z = 1.8;
-    if (pitch == Approx(0.0).margin(1e-3))
+    // Suppose an unobstructed standing person model is placed exactly in the middle
+    // of the camera image, such that the person's midpoint and image midpoint coincide.
+    // _d_param = real world distance (metres) along the floor from camera to standing person
+    if (std::abs(pitch) < 0.001)
+    {
+        // TO DO: handle when the camera pitch is zero
         _d_param = 5.28;
+    }
     else
-        _d_param = (_camera_pose.translation.z - STANDING_PERSON_SIZE_Z/2)/tan(pitch);
+    {
+        const float STANDING_PERSON_HEIGHT = 1.8;
+        _d_param = (_camera_pose.translation.z - STANDING_PERSON_HEIGHT/2)/tan(pitch);
+    }
+
     // CAMERA_TO_HUMAN = real world direct distance from camera to standing person's midpoint
     const float CAMERA_TO_HUMAN = _d_param/cos(pitch);
-    // _w_param = width of real world within the image, for this _d_param
+
+    // _w_param = width of real world (metres) within the image, at the location of the standing person
     _w_param = CAMERA_TO_HUMAN*tan(_config->camera_afov/2);
 
 }
@@ -235,7 +236,7 @@ YoloDetector::Obstacles YoloDetector::post_process(const Mat &original_image, Ma
     vector<int> final_class_ids;
     vector<float> final_confidences;
     vector<Rect> final_boxes;
-    vector<Point> final_centroids; // image coordinates, (int, int)
+    vector<Point> final_centroids;
     for (auto i : indices)
     {
         final_class_ids.push_back(class_ids[i]);
@@ -245,9 +246,12 @@ YoloDetector::Obstacles YoloDetector::post_process(const Mat &original_image, Ma
     }
 
     // draw to image
+    drawing(original_image, image, final_class_ids, final_confidences, final_boxes, final_centroids);
     if (_config->visualize)
     {
-        drawing(original_image, image, final_class_ids, final_confidences, final_boxes, final_centroids);
+        // OpenCV display
+        imshow(_config->camera_name, image);
+        waitKey(3);
     }
 
     // generate rmf_obstacles
@@ -266,38 +270,6 @@ YoloDetector::Obstacles YoloDetector::to_rmf_obstacles(const Mat &original_image
         Point3d obstacle = img_coord_to_cam_coord(final_centroids[i], original_image);
 
         auto rmf_obstacle = Obstacle();
-        // auto obstacle2 = rmf_obstacle_msgs::build<Obstacle>()
-        //     .header(std_msgs::build<std_msgs::msg::Header>()
-        //         .stamp(builtin_interfaces::build<builtin_interfaces::msg::Time>()
-        //             .sec(0)
-        //             .nanosec(0))
-        //         .frame_id(_config->camera_name))
-        //     .id(i)
-        //     .source(_config->camera_name)
-        //     .level_name("L1")
-        //     .classification(_class_list[final_class_ids[i]])
-        //     .bbox(rmf_obstacle_msgs::build<rmf_obstacle_msgs::msg::BoundingBox3D>()
-        //         .center(geometry_msgs::build<geometry_msgs::msg::Pose>()
-        //             .position(geometry_msgs::build<geometry_msgs::msg::Point>()
-        //                 .x(obstacle.x)
-        //                 .y(obstacle.y)
-        //                 .z(obstacle.z))
-        //             .orientation(geometry_msgs::build<geometry_msgs::msg::Quaternion>()
-        //                 .x(0.0)
-        //                 .y(0.0)
-        //                 .z(0.0)
-        //                 .w(1.0)))
-        //         .size(geometry_msgs::build<geometry_msgs::msg::Vector3>()
-        //             .x(1.0)
-        //             .y(1.0)
-        //             .z(2.0)))
-        //     .data_resolution(0);
-        // The data field of the msg building has not worked
-        //     .data()
-        //     .lifetime(builtin_interfaces::build<builtin_interfaces::msg::Duration>()
-        //         .sec(10)
-        //         .nanosec(0))
-        //     .action(Obstacle::ACTION_ADD);
         rmf_obstacle.header.frame_id = _config->camera_name;
         rmf_obstacle.id = i;
         rmf_obstacle.source = _config->camera_name;
@@ -310,7 +282,6 @@ YoloDetector::Obstacles YoloDetector::to_rmf_obstacles(const Mat &original_image
         rmf_obstacle.bbox.size.y = 1.0;
         rmf_obstacle.bbox.size.z = 2.0;
         rmf_obstacle.lifetime.sec = 10;
-        // rmf_obstacle.action = Obstacle::ACTION_ADD;
 
         cam_coord_to_world_coord(rmf_obstacle);
         rmf_obstacles.obstacles.push_back(rmf_obstacle);
@@ -321,29 +292,50 @@ YoloDetector::Obstacles YoloDetector::to_rmf_obstacles(const Mat &original_image
 
 Point3d YoloDetector::img_coord_to_cam_coord(const Point &centroid, const Mat &original_image)
 {
-    // img coordinates are pixel x & y position in the frame, px, py
-    // camera coordinates are in bird's eye view (top down), with origin at camera, cx, cy
-    // cx is +ve toward front of camera, cy is +ve toward left of camera
-    const float WIDTH_PER_PIXEL_M = _w_param*2/original_image.cols;
-    const float DEPTH_PER_PIXEL_M = _d_param*2/original_image.rows;
-    float px = centroid.x;
+    // input obstacle centroid is in image coordinates (px, py)
+    // output obstacle in camera coordinates (cx, cy, cz) are w.r.t. the camera's frame
+    // camera's frame definition:
+        // x-axis is +ve in the direction the camera is facing, ignoring camera pitch
+        // y-axis is +ve to the left of the camera
+        // x & y axis are parallel to the ground
+        // z-axis is +ve upwards and perpendicular to the ground
+
+    // _d_param & _w_param were calculated for a standing person's midpoint at the center of the image
+    // assume that every vertical offset of 1 pixel corresponds to a constant change in depth of the obstacle
+    float depth_per_pixel = _d_param*2/original_image.rows;
     float py = centroid.y;
+
+    // calculate cx:
+    // factor tries to account for the fact that pixels at top of the image correspond to a larger change
+    // in depth compared to pixels at the bottom of the image
     float factor =  py/(original_image.rows/2);
-    // float pitch_factor = (25/_config->camera_pose_p);
-    float depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M;
-    if (factor > 1) {
-        depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*factor;
+    if (factor > 1)
+    {
+        depth_per_pixel = depth_per_pixel*factor;
     }
-    else {
-        depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*(((1 - factor)*100));
-        // depth_per_pixel_m_dynamic = DEPTH_PER_PIXEL_M*(((1 - factor)*pitch_factor));
+    else
+    {
+        depth_per_pixel = depth_per_pixel*(((1 - factor)*100));
     }
-    float cx = _d_param + (depth_per_pixel_m_dynamic * ((original_image.rows/2) - py));
+
+    // use image y-coordinate (py) and _d_param to estimate camera x-coordinate (cx)
+    float cx = _d_param + (depth_per_pixel * ((original_image.rows/2) - py));
     if (cx < 0) cx = 0.1;
 
-    float width_per_pixel_m_dynamic = WIDTH_PER_PIXEL_M * cx / _d_param;
-    float cy = width_per_pixel_m_dynamic * ((original_image.cols/2) - px);
-    return Point3d(cx, cy, 0.0);
+    // calculate cy:
+    // assume that every horizontal offset of 1 pixel corresponds to a constant change in horizontal displacement of the obstacle
+    float width_per_pixel = _w_param*2/original_image.cols;
+    float px = centroid.x;
+
+    // the higher the obstacle's depth, cx, the larger the width_per_pixel
+    width_per_pixel = width_per_pixel * cx / _d_param;
+
+    // use image x-coordinate (px) and _w_param to estimate camera y-coordinate (cy)
+    float cy = width_per_pixel * ((original_image.cols/2) - px);
+
+    // calculate cz:
+    float cz = 0.0;
+    return Point3d(cx, cy, cz);
 }
 
 void YoloDetector::cam_coord_to_world_coord(Obstacle &obstacle)
@@ -351,7 +343,7 @@ void YoloDetector::cam_coord_to_world_coord(Obstacle &obstacle)
     // Transform obstacle coordinates from camera frame to world frame:
     // Input obstacle coordinates are in the camera's frame, where the camera's frame has roll = pitch = 0.
     // The true camera's frame in _camera_pose may have roll & pitch but we need to ignore that
-    // before doing transformation. Also ignore z translation as obstacles will be projected onto ground plane.
+    // before doing transformation. Also ignore z translation as obstacles are on the ground plane.
 
     // get roll, pitch, yaw
     tf2::Quaternion temp(
@@ -427,10 +419,6 @@ void YoloDetector::drawing(const Mat &original_image, Mat &image, const vector<i
     sensor_msgs::msg::Image image_msg;
     img_bridge.toImageMsg(image_msg);
     _image_detections_pub->publish(image_msg);
-
-    // OpenCV display
-    imshow(_config->camera_name, image);
-    waitKey(3);
 }
 
 void YoloDetector::draw_label(Mat &input_image, string label, int left, int top)
@@ -444,8 +432,8 @@ void YoloDetector::draw_label(Mat &input_image, string label, int left, int top)
     Point tlc = Point(left, top);
     // Bottom right corner
     Point brc = Point(left + label_size.width, top + label_size.height);
-    // Draw white rectangle
+    // Draw blue text background
     rectangle(input_image, tlc, brc, BLUE, FILLED);
-    // Put the label on the black rectangle
+    // Put the label on the blue text background
     putText(input_image, label, Point(left, top + label_size.height), FONT_FACE, FONT_SCALE, YELLOW, FONT_THICKNESS);
 }
